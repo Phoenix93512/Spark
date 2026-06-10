@@ -1,0 +1,4 @@
+_archive/
+*.afdesign
+.claude/
+.DS_Store

@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Spark</title>
+<meta name="theme-color" content="#f46b0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spark">
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg-2: #f7f7f5; --bg-3: #efeeeb;
+    --border: rgba(0,0,0,0.07); --border-strong: rgba(0,0,0,0.12);
+    --text: #191919; --text-2: #6b6b6b; --text-3: #aaa;
+    --orange: #F46B0E; --orange-light: #FEF0E6; --orange-mid: #FDDBC2;
+    --tag-bg: #f0eeeb; --tag-text: #666;
+    --font: 'Geist', -apple-system, sans-serif;
+    --mono: 'Geist Mono', monospace;
+    --nav-h: 64px;
+  }
+  html, body {
+    height: 100dvh; background: #fff; font-family: var(--font);
+    position: fixed; inset: 0; width: 100%;
+    overflow: hidden; overscroll-behavior: none; touch-action: manipulation;
+  }
+
+  .device {
+    width: 100%; height: 100dvh; background: var(--bg); border-radius: 0;
+    overflow: hidden; position: relative; box-shadow: none;
+    display: flex; flex-direction: column;
+  }
+
+  .screen { display: none; flex-direction: column; height: 100%; position: relative; }
+  .screen.active { display: flex; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: max(18px, env(safe-area-inset-top)) 24px 0; flex-shrink: 0;
+  }
+  .topbar-title { font-size: 13px; font-weight: 500; color: var(--text-3); letter-spacing: 0.04em; }
+  .icon-btn {
+    width: 32px; height: 32px; border: none; background: none; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-3); transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { background: var(--bg-2); color: var(--text); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .icon-btn-search { width: 40px; height: 40px; }
+  .icon-btn-search svg { width: 26px; height: 26px; }
+  .back-btn {
+    display: flex; align-items: center; gap: 4px; border: none; background: none;
+    cursor: pointer; color: var(--text-3); font-size: 13px; font-family: var(--font);
+    padding: 4px 0; transition: color 0.15s;
+  }
+  .back-btn:hover { color: var(--text); }
+  .back-btn svg { width: 16px; height: 16px; }
+
+  .content { flex: 1; overflow-y: auto; padding: 0 24px 20px; }
+  .content::-webkit-scrollbar { display: none; }
+
+  .section-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    letter-spacing: 0.07em; text-transform: uppercase; padding: 20px 0 12px;
+  }
+  .section-label.today {
+    font-size: 16px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.2px; text-transform: none;
+  }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 32px; text-align: center; gap: 12px;
+  }
+  .empty-icon { color: var(--text-3); margin-bottom: 4px; }
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--text-2); }
+  .empty-sub { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  /* Idea rows */
+  .idea-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    transition: background 0.1s; border-radius: 6px;
+    margin: 0 -8px; padding: 13px 8px;
+  }
+  .idea-row:hover { background: var(--bg-2); }
+  .idea-row:last-child { border-bottom: none; }
+  .idea-body { flex: 1; min-width: 0; }
+  .idea-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .idea-desc { font-size: 12px; color: var(--text-2); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .idea-meta { display: flex; gap: 6px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--tag-bg); color: var(--tag-text); }
+  .tag.orange { background: var(--orange-light); color: var(--orange); }
+  .idea-time { font-size: 11px; color: var(--text-3); }
+
+  .view-more-btn {
+    width: 100%; border: none; background: none; cursor: pointer;
+    font-family: var(--font); font-size: 12px; color: var(--text-3);
+    padding: 14px 0; display: flex; align-items: center; gap: 6px; transition: color 0.15s;
+  }
+  .view-more-btn:hover { color: var(--text); }
+  .view-more-btn svg { width: 14px; height: 14px; }
+
+  /* FAB */
+  .fab {
+    position: absolute; bottom: calc(var(--nav-h) + 16px); right: 24px;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--orange); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(244,107,14,0.35);
+    transition: transform 0.15s, opacity 0.15s; z-index: 10;
+  }
+  .fab:hover { transform: scale(1.06); }
+  .fab:active { transform: scale(0.97); }
+  .fab svg { width: 24px; height: 24px; color: white; }
+  .fab img { width: 51px; height: 51px; object-fit: contain; }
+  .fab.recording { animation: fab-pulse 1s ease-in-out infinite; background: #d45800; }
+  @keyframes fab-pulse { 0%,100% { box-shadow: 0 4px 20px rgba(244,107,14,0.35); } 50% { box-shadow: 0 4px 32px rgba(244,107,14,0.7); } }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border); display: flex; z-index: 15;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; border: none; background: none; cursor: pointer; padding: 0;
+    font-family: var(--font); font-size: 10px; color: var(--text-3); transition: color 0.15s;
+  }
+  .nav-item svg { width: 20px; height: 20px; }
+  .nav-item.active { color: var(--orange); }
+  .nav-item:hover { color: var(--text-2); }
+
+  /* Detail */
+  .detail-header { padding: 4px 24px 0; flex-shrink: 0; }
+  .detail-title { font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; line-height: 1.22; margin-bottom: 6px; }
+  .detail-time { font-size: 12px; color: var(--text-3); }
+  .detail-desc { font-size: 15px; color: var(--text-2); line-height: 1.55; padding: 4px 24px 4px; }
+  .detail-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .tag-pill { font-size: 11px; padding: 3px 9px; border-radius: 4px; background: var(--tag-bg); color: var(--tag-text); cursor: pointer; transition: background 0.1s; }
+  .tag-pill:hover { background: var(--orange-mid); }
+  .tag-pill.orange { background: var(--orange-light); color: var(--orange); }
+  .folder-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; padding: 3px 9px; border-radius: 4px;
+    background: var(--bg-3); color: var(--text-2);
+  }
+  .folder-badge svg { width: 11px; height: 11px; }
+  .detail-context { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 12px 24px 8px; }
+  [contenteditable] { caret-color: var(--orange); outline: none; }
+  [contenteditable].editing { background: var(--bg-2); border-radius: 6px; box-shadow: 0 0 0 2px var(--orange-light); }
+
+  .block { padding: 20px 24px 0; }
+  .block-label { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
+  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .summary-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text); line-height: 1.55; }
+  .bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-top: 8px; flex-shrink: 0; }
+
+  .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
+
+  .transcript-toggle {
+    display: flex; align-items: center; gap: 8px; padding: 14px 24px;
+    border: none; background: none; cursor: pointer;
+    font-family: var(--font); font-size: 12px; color: var(--text-3);
+    width: 100%; transition: background 0.1s;
+  }
+  .transcript-toggle:hover { background: var(--bg-2); }
+  .transcript-toggle svg { width: 14px; height: 14px; }
+  .chevron { margin-left: auto; width: 14px !important; height: 14px !important; transition: transform 0.2s; }
+  .transcript-box {
+    display: none; padding: 14px 24px; font-size: 12px; color: var(--text-2);
+    line-height: 1.7; background: var(--bg-2); font-family: var(--mono);
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  }
+  .transcript-box.open { display: block; }
+
+  .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .related-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 0;
+    border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12px; color: var(--text-2);
+  }
+  .related-row:last-child { border-bottom: none; }
+  .related-row:hover { color: var(--text); }
+  .related-row svg { width: 12px; height: 12px; color: var(--orange); flex-shrink: 0; }
+
+  .delete-btn {
+    display: flex; align-items: center; gap: 6px; margin: 20px 24px 80px;
+    border: none; background: none; cursor: pointer; font-family: var(--font);
+    font-size: 12px; color: var(--text-3); padding: 8px 0; transition: color 0.15s;
+  }
+  .delete-btn:hover { color: #eb5757; }
+  .delete-btn svg { width: 14px; height: 14px; }
+
+  /* Folder rows */
+  .folder-row {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+    transition: background 0.1s; border-radius: 6px;
+    margin: 0 -8px; padding: 14px 8px;
+  }
+  .folder-row:hover { background: var(--bg-2); }
+  .folder-row:last-child { border-bottom: none; }
+  .folder-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--orange-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .folder-icon svg { width: 18px; height: 18px; color: var(--orange); }
+  .folder-info { flex: 1; }
+  .folder-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .folder-count { font-size: 11px; color: var(--text-3); }
+  .folder-arrow { color: var(--text-3); }
+  .folder-arrow svg { width: 14px; height: 14px; }
+
+  /* Search */
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-2); border-radius: 10px; margin: 12px 24px 0;
+    padding: 10px 14px; flex-shrink: 0;
+  }
+  .search-bar svg { width: 16px; height: 16px; color: var(--text-3); flex-shrink: 0; }
+  .search-input {
+    flex: 1; border: none; background: none; outline: none;
+    font-family: var(--font); font-size: 13px; color: var(--text);
+  }
+  .search-input::placeholder { color: var(--text-3); }
+  .search-clear { border: none; background: none; cursor: pointer; color: var(--text-3); padding: 0; display: none; }
+  .search-clear svg { width: 14px; height: 14px; }
+
+
+  /* Settings */
+  .settings-section { padding: 20px 24px 0; }
+  .settings-label { font-size: 11px; font-weight: 500; color: var(--text-3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 12px; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 0; border-bottom: 1px solid var(--border); gap: 12px;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-info { flex: 1; }
+  .settings-row-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .settings-row-sub { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+  .settings-input {
+    width: 100%; border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 10px 12px; font-family: var(--mono); font-size: 12px; color: var(--text);
+    background: var(--bg); outline: none; transition: border-color 0.15s; margin-top: 8px;
+  }
+  .settings-input:focus { border-color: var(--orange); }
+  .settings-save-btn {
+    width: 100%; margin-top: 10px; padding: 12px; border-radius: 8px; border: none;
+    background: var(--orange); color: white; font-family: var(--font); font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: opacity 0.15s;
+  }
+  .settings-save-btn:hover { opacity: 0.88; }
+  /* Toggle */
+  .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0; background: var(--bg-3); border-radius: 13px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--orange); }
+  .toggle-thumb {
+    position: absolute; width: 20px; height: 20px; top: 3px; left: 3px;
+    background: white; border-radius: 50%; transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15); pointer-events: none;
+  }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+  /* Recording overlay */
+  .overlay {
+    display: none; position: absolute; inset: 0; background: white; z-index: 20;
+    flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+    padding: 32px;
+  }
+  .overlay.active { display: flex; }
+
+  #overlay-recording { justify-content: flex-start; gap: 0; padding: max(56px, calc(env(safe-area-inset-top) + 24px)) 28px 52px; }
+  .rec-top { display: flex; flex-direction: column; align-items: center; gap: 14px; flex-shrink: 0; }
+  .rec-transcript {
+    flex: 1; width: 100%; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 26px; line-height: 1.45; color: var(--text);
+    font-weight: 400; overflow-y: auto; padding: 28px 4px; letter-spacing: -0.3px;
+    transition: opacity 0.8s ease-out;
+  }
+  .rec-transcript::-webkit-scrollbar { display: none; }
+  .rec-transcript.placeholder { color: var(--text-3); font-size: 16px; }
+  .rec-transcript.faded { opacity: 0; }
+  .rec-time { font-size: 19px; font-weight: 400; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+  .rec-waveform { display: flex; gap: 4px; align-items: center; height: 44px; }
+  .wave-bar { width: 4px; border-radius: 2px; background: var(--orange); height: 6px; animation: wave 0.9s ease-in-out infinite; transition: height 0.07s linear; }
+  .wave-bar:nth-child(1){animation-delay:0s} .wave-bar:nth-child(2){animation-delay:.12s}
+  .wave-bar:nth-child(3){animation-delay:.24s} .wave-bar:nth-child(4){animation-delay:.36s}
+  .wave-bar:nth-child(5){animation-delay:.24s} .wave-bar:nth-child(6){animation-delay:.12s}
+  .wave-bar:nth-child(7){animation-delay:0s}
+  .rec-waveform.reactive .wave-bar { animation: none; }
+  @keyframes wave { 0%,100%{height:6px} 50%{height:28px} }
+  .rec-stop {
+    width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--orange); background: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.12s, background 0.15s;
+    box-shadow: 0 4px 20px rgba(244,107,14,0.35);
+  }
+  .rec-stop:hover { transform: scale(1.05); }
+  .rec-stop:active { transform: scale(0.96); }
+  .rec-stop-inner { width: 24px; height: 24px; border-radius: 5px; background: white; }
+
+  /* Processing / review overlay */
+  #overlay-processing { justify-content: flex-start; gap: 0; padding: max(48px, calc(env(safe-area-inset-top) + 20px)) 24px 24px; }
+  #overlay-processing.centered { justify-content: center; }
+  #overlay-processing.centered .proc-scroll { flex: 0 1 auto; justify-content: center; }
+  #overlay-processing.loading .proc-scroll,
+  #overlay-processing.loading .btn-row { display: none; }
+  .proc-scroll {
+    width: 100%; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+  }
+  .proc-scroll::-webkit-scrollbar { display: none; }
+
+  /* Loading screen — flame + creativity quote */
+  .proc-loading {
+    display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; text-align: center; width: 100%; padding: 0 8px;
+  }
+  .proc-loading.show { display: flex; }
+  .proc-loading img {
+    width: 76px; height: 76px; object-fit: contain; transform-origin: center;
+    filter: url(#flame-warp);
+    animation: flame-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes flame-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.12); opacity: 0.75; }
+  }
+  .proc-quote { font-size: 17px; line-height: 1.5; color: var(--text); font-weight: 500; max-width: 280px; }
+  .proc-quote-author { font-size: 13px; color: var(--text-3); margin-top: 10px; }
+  .overlay-eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--text-3); align-self: flex-start;
+  }
+  .processing-status { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: -10px; }
+  .processing-status.ready { color: #22a06b; }
+  .spinner-sm { width: 14px; height: 14px; border: 2px solid var(--orange-mid); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Result preview — the hero */
+  .result-preview { width: 100%; display: none; text-align: left; flex-shrink: 0; }
+  .result-preview.show { display: block; }
+  .result-title { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.25; letter-spacing: -0.4px; }
+  .result-desc { font-size: 15px; color: var(--text-2); margin-bottom: 14px; line-height: 1.5; }
+  .result-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .result-folder { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+  .result-folder svg { width: 12px; height: 12px; }
+
+  /* Transcript toggle + collapsible editable area */
+  .transcript-toggle {
+    display: none; align-items: center; gap: 6px; align-self: flex-start;
+    font-size: 12px; color: var(--text-3); cursor: pointer; user-select: none;
+    padding: 4px 0;
+  }
+  .transcript-toggle.show { display: flex; }
+  .transcript-toggle svg { width: 13px; height: 13px; transition: transform 0.2s; }
+  .transcript-toggle.open svg { transform: rotate(90deg); }
+  .transcript-wrap { width: 100%; display: none; flex-direction: column; gap: 4px; }
+  .transcript-wrap.show { display: flex; }
+  .processing-transcript {
+    width: 100%; background: var(--bg-2); border: 1.5px solid transparent; border-radius: 8px;
+    padding: 12px 14px; font-size: 13px; color: var(--text-2); line-height: 1.55;
+    text-align: left; max-height: 160px; overflow-y: auto; cursor: text;
+    font-family: var(--font); resize: none; outline: none;
+  }
+  .processing-transcript:focus { border-color: var(--orange); background: var(--bg); color: var(--text); }
+  .processing-transcript::-webkit-scrollbar { display: none; }
+  .transcript-edit-hint { font-size: 10px; color: var(--text-3); align-self: flex-start; }
+
+  /* Folder picker */
+  .folder-picker {
+    width: 100%; display: none; flex-direction: column; gap: 6px; flex-shrink: 0;
+  }
+  .folder-picker.show { display: flex; }
+  .folder-picker-label { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); }
+  .folder-select {
+    width: 100%; border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 9px 12px; font-family: var(--font); font-size: 13px; color: var(--text);
+    background: var(--bg); outline: none; appearance: none;
+  }
+  .folder-new-input {
+    width: 100%; border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 9px 12px; font-family: var(--font); font-size: 13px; color: var(--text);
+    background: var(--bg); outline: none; display: none;
+  }
+  .folder-new-input:focus, .folder-select:focus { border-color: var(--orange); }
+  .folder-new-input.show { display: block; }
+
+  .btn-row { display: flex; gap: 10px; width: 100%; flex-shrink: 0; padding-top: 14px; }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 12px; border: none;
+    font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn-primary { flex: 2; font-weight: 600; background: var(--orange); color: white; box-shadow: 0 2px 14px rgba(244,107,14,0.3); }
+  .btn-secondary { background: transparent; color: var(--text-3); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .overlay-title { font-size: 16px; font-weight: 500; color: var(--text); align-self: flex-start; }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: calc(var(--nav-h) + 24px); left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: white; font-size: 12px; padding: 8px 16px;
+    border-radius: 20px; opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap; pointer-events: none; z-index: 30;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Error */
+  .error-box {
+    width: 100%; background: #fff5f5; border: 1px solid #fddede;
+    border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #c0392b;
+    line-height: 1.5; display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* API key warning banner */
+  .api-banner {
+    margin: 12px 24px 0; padding: 10px 12px; background: var(--orange-light);
+    border-radius: 8px; font-size: 12px; color: #a84d00; display: flex;
+    align-items: center; gap: 8px; cursor: pointer; flex-shrink: 0;
+  }
+  .api-banner svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* Voice indicator */
+  .voice-indicator {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 5px; background: var(--orange-light);
+    border-radius: 20px; padding: 3px 10px; font-size: 10px; color: var(--orange);
+    z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  }
+  .voice-indicator.show { opacity: 1; }
+  .voice-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); animation: blink 1s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="flame-warp" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="3" result="noise">
+      <animate attributeName="baseFrequency" dur="6s" values="0.012 0.018;0.02 0.026;0.012 0.018" repeatCount="indefinite"/>
+    </feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<div class="device">
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-inbox">
+    <div class="topbar">
+      <span class="topbar-title">ideas</span>
+      <button class="icon-btn icon-btn-search" onclick="openSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
+      </button>
+    </div>
+    <div id="inbox-content" class="content"></div>
+    <button class="fab" onclick="startRecording()">
+      <img src="icon3.png" alt="Capture idea">
+    </button>
+    <div class="voice-indicator" id="voice-indicator">
+      <div class="voice-dot"></div>
+      listening for "I have an idea"
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- SEARCH SCREEN -->
+  <div class="screen" id="screen-search">
+    <div class="topbar">
+      <button class="back-btn" onclick="closeSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </button>
+    </div>
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
+      <input class="search-input" id="search-input" type="text" placeholder="Search ideas..." oninput="handleSearch()" autofocus>
+      <button class="search-clear" id="search-clear" onclick="clearSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="search-content" class="content" style="padding-top:4px;">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
+        </div>
+        <div class="empty-title">Search your ideas</div>
+        <div class="empty-sub">Type any word or concept — even if it wasn't in your original idea</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOLDERS SCREEN -->
+  <div class="screen" id="screen-folders">
+    <div class="topbar">
+      <span class="topbar-title">folders</span>
+    </div>
+    <div id="folders-content" class="content"></div>
+    <button class="fab" onclick="startRecording()">
+      <img src="icon3.png" alt="Capture idea">
+    </button>
+  </div>
+
+  <!-- FOLDER DETAIL -->
+  <div class="screen" id="screen-folder-detail">
+    <div class="topbar">
+      <button class="back-btn" onclick="showNavScreen('screen-folders')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Folders
+      </button>
+    </div>
+    <div id="folder-detail-content" class="content" style="padding-top:0;"></div>
+    <button class="fab" onclick="startRecording()">
+      <img src="icon3.png" alt="Capture idea">
+    </button>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div class="screen" id="screen-settings">
+    <div class="topbar">
+      <span class="topbar-title">settings</span>
+    </div>
+    <div class="content" style="padding-top:0;">
+      <div class="settings-section">
+        <div class="settings-label">AI</div>
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start;">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Gemini API Key</div>
+            <div class="settings-row-sub">Free tier — get one at aistudio.google.com. Used to auto-summarize your ideas.</div>
+          </div>
+          <input class="settings-input" id="gemini-key-input" type="password" placeholder="AQ..." autocomplete="off" spellcheck="false">
+          <button class="settings-save-btn" onclick="saveApiKey()">Save key</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Voice</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Voice trigger</div>
+            <div class="settings-row-sub">Say "I have an idea" to start recording (app must be open)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="voice-trigger-toggle" onchange="toggleVoiceTrigger()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Data</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Total ideas</div>
+          </div>
+          <span id="settings-idea-count" style="font-size:13px;color:var(--text-3);"></span>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title" style="color:#eb5757;">Clear all data</div>
+            <div class="settings-row-sub">Permanently deletes all ideas</div>
+          </div>
+          <button class="icon-btn" onclick="clearAllData()" style="color:#eb5757;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL SCREEN -->
+  <div class="screen" id="screen-detail">
+    <div class="topbar">
+      <button class="back-btn" id="detail-back-btn" onclick="goBackFromDetail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        <span id="detail-back-label">Home</span>
+      </button>
+      <div style="display:flex; align-items:center; gap:2px;">
+        <button class="icon-btn" id="pin-btn" onclick="togglePinCurrentIdea()" title="Pin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><path d="M12 16v4"/></svg>
+        </button>
+        <button class="icon-btn" onclick="copyCurrentIdea()" title="Copy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="icon-btn" onclick="shareCurrentIdea()" title="Share">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+        </button>
+        <button class="icon-btn" onclick="deleteCurrentIdea()" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="content" id="detail-content" style="padding-top:8px; padding-bottom:80px;"></div>
+    <button class="fab" onclick="startRecording()">
+      <img src="icon3.png" alt="Capture idea">
+    </button>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="showNavScreen('screen-inbox')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="nav-item" id="nav-folders" onclick="showNavScreen('screen-folders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Folders
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="showNavScreen('screen-settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+
+  <!-- RECORDING OVERLAY -->
+  <div class="overlay" id="overlay-recording">
+    <div class="rec-top">
+      <div class="rec-waveform" id="rec-waveform">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+    </div>
+    <div class="rec-transcript placeholder" id="rec-hint">tap lightbulb to start</div>
+    <div class="error-box" id="rec-error"></div>
+    <button class="rec-stop" id="rec-stop-btn" onclick="stopRecording()">
+      <div class="rec-stop-inner"></div>
+    </button>
+  </div>
+
+  <!-- PROCESSING OVERLAY -->
+  <div class="overlay" id="overlay-processing">
+    <div class="proc-loading" id="proc-loading">
+      <img src="icon2.png" alt="">
+      <div>
+        <div class="proc-quote" id="proc-quote"></div>
+        <div class="proc-quote-author" id="proc-quote-author"></div>
+      </div>
+    </div>
+    <div class="proc-scroll">
+      <div class="overlay-eyebrow">New idea</div>
+      <div class="processing-status" id="processing-status"></div>
+      <div class="result-preview" id="result-preview"></div>
+      <div class="folder-picker" id="folder-picker">
+        <div class="folder-picker-label">Save to folder</div>
+        <select class="folder-select" id="folder-select" onchange="handleFolderSelect()">
+          <option value="">No folder</option>
+          <option value="__new__">+ New folder...</option>
+        </select>
+        <input class="folder-new-input" id="folder-new-input" type="text" placeholder="Folder name..." maxlength="30">
+      </div>
+      <div class="transcript-toggle" id="transcript-toggle" onclick="toggleReviewTranscript()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        <span id="transcript-toggle-label">Show original transcript</span>
+      </div>
+      <div class="transcript-wrap" id="transcript-wrap">
+        <div class="processing-transcript" id="processing-transcript" ondblclick="editTranscript()"></div>
+        <div class="transcript-edit-hint">Double-tap the text to fix it (type or dictate)</div>
+      </div>
+      <div class="error-box" id="processing-error"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="cancelProcessing()">Delete</button>
+      <button class="btn btn-primary" id="save-idea-btn" onclick="saveIdea()" disabled>Save</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let ideas = JSON.parse(localStorage.getItem('spark-ideas') || '[]');
+let currentTranscript = '';
+let displayAnchor = 0; // chars into currentTranscript; words before this aren't shown on screen
+let pendingIdea = null;
+let currentIdeaId = null;
+let detailFromScreen = 'screen-inbox';
+let recognition = null;
+let triggerRecognition = null;
+let activeNavScreen = 'screen-inbox';
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  renderInbox();
+  renderFolders();
+  checkApiBanner();
+  loadSettings();
+  updateSettingsCount();
+}
+init();
+
+// ─── Settings / API key ───────────────────────────────────────────────────────
+function getApiKey() {
+  return localStorage.getItem('spark-gemini-key') || '';
+}
+function saveApiKey() {
+  const val = document.getElementById('gemini-key-input').value.trim();
+  if (!val) { showToast('Enter a key first'); return; }
+  localStorage.setItem('spark-gemini-key', val);
+  checkApiBanner();
+  showToast('API key saved');
+}
+function loadSettings() {
+  const key = getApiKey();
+  if (key) document.getElementById('gemini-key-input').value = key;
+  const voiceOn = localStorage.getItem('spark-voice-trigger') === '1';
+  document.getElementById('voice-trigger-toggle').checked = voiceOn;
+  if (voiceOn) startVoiceTrigger();
+}
+function checkApiBanner() {
+  const banner = document.getElementById('api-banner-inbox');
+  if (banner) banner.style.display = getApiKey() ? 'none' : 'flex';
+}
+function updateSettingsCount() {
+  document.getElementById('settings-idea-count').textContent = ideas.length + ' idea' + (ideas.length !== 1 ? 's' : '');
+}
+function clearAllData() {
+  if (!confirm('Delete all ideas? This cannot be undone.')) return;
+  ideas = [];
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  updateSettingsCount();
+  showToast('All data cleared');
+}
+
+// ─── Nav ──────────────────────────────────────────────────────────────────────
+function showNavScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navMap = {
+    'screen-inbox': 'nav-home',
+    'screen-folders': 'nav-folders',
+    'screen-folder-detail': 'nav-folders',
+    'screen-settings': 'nav-settings'
+  };
+  const navId = navMap[id];
+  if (navId) document.getElementById(navId).classList.add('active');
+  if (id === 'screen-settings') updateSettingsCount();
+  if (id !== 'screen-detail' && id !== 'screen-search' && id !== 'screen-folder-detail') {
+    activeNavScreen = id;
+  }
+  document.getElementById('bottom-nav').style.display = (id === 'screen-search') ? 'none' : 'flex';
+}
+
+function hideOverlays() {
+  document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+}
+
+function goBackFromDetail() {
+  showNavScreen(detailFromScreen === 'screen-folder-detail' ? 'screen-folder-detail' : 'screen-inbox');
+}
+
+// ─── Render inbox ─────────────────────────────────────────────────────────────
+function renderInbox() {
+  const container = document.getElementById('inbox-content');
+  if (ideas.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <img src="icon2.png" alt="Spark" width="44" height="44">
+        </div>
+        <div class="empty-title">No ideas yet</div>
+        <div class="empty-sub">Tap the lightbulb to capture your first idea</div>
+      </div>`;
+    return;
+  }
+  const now = Date.now();
+  const pinned = ideas.filter(i => i.pinned);
+  const rest = ideas.filter(i => !i.pinned);
+  const buckets = { 'Today': [], 'This Week': [] };
+  rest.forEach(idea => {
+    const b = dateBucket(idea.createdAt);
+    if (b) buckets[b].push(idea); // older ideas (null) stay off Home
+  });
+  let html = '';
+  if (pinned.length) {
+    html += `<div class="section-label">Pinned</div>`;
+    pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
+  }
+  if (buckets['Today'].length) {
+    html += `<div class="section-label today">Today</div>`;
+    buckets['Today'].forEach(idea => { html += ideaRowHTML(idea, now); });
+  }
+  if (buckets['This Week'].length) {
+    html += `<div class="section-label">This Week</div>`;
+    buckets['This Week'].forEach(idea => { html += ideaRowHTML(idea, now); });
+  }
+  container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing recent</div><div class="empty-sub">Older ideas are in Folders and Search</div></div>`;
+}
+
+// Returns 'Today' | 'This Week', or null for older ideas (hidden from Home)
+function dateBucket(ts) {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (ts >= startOfToday) return 'Today';
+  if (ts >= startOfToday - 6 * 86400000) return 'This Week';
+  return null;
+}
+
+function showAllIdeasScreen() {
+  const container = document.getElementById('folders-content');
+  renderFoldersScreen(container, null, 'All ideas');
+  showNavScreen('screen-folders');
+}
+
+function ideaRowHTML(idea, now, clickFn) {
+  const tags = (idea.tags || []).slice(0, 2);
+  const firstTag = tags[0] || '';
+  const timeStr = timeAgo(idea.createdAt);
+  const fn = clickFn || `openIdea('${idea.id}', '${activeNavScreen}')`;
+  return `<div class="idea-row" onclick="${fn}">
+    <div class="idea-body">
+      <div class="idea-title">${escHtml(idea.title)}</div>
+      <div class="idea-desc">${escHtml(idea.description)}</div>
+      <div class="idea-meta">
+        ${firstTag ? `<span class="tag orange">${escHtml(firstTag)}</span>` : ''}
+        ${tags.slice(1).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+        <span class="idea-time">${timeStr}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+function renderFolders() {
+  const container = document.getElementById('folders-content');
+  renderFoldersScreen(container, null, null);
+}
+
+function renderFoldersScreen(container, filterFolder, title) {
+  const folders = getFolders();
+  if (filterFolder !== null) {
+    const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder);
+    const now = Date.now();
+    let html = `<div class="section-label">${escHtml(filterFolder || 'Unfiled')}</div>`;
+    if (folderIdeas.length === 0) {
+      html += `<div class="empty-state" style="padding:40px 0"><div class="empty-title">No ideas in this folder</div></div>`;
+    } else {
+      folderIdeas.forEach(idea => { html += ideaRowHTML(idea, now); });
+    }
+    container.innerHTML = html;
+    return;
+  }
+
+  if (folders.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="empty-title">No folders yet</div>
+        <div class="empty-sub">Folders are created automatically when you save ideas with AI, or add one when saving</div>
+      </div>`;
+    return;
+  }
+
+  let html = '<div class="section-label">All ideas</div>';
+  // "All" row
+  html += `<div class="folder-row" onclick="openFolderDetail('__all__', 'All ideas')">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+    <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${ideas.length} idea${ideas.length !== 1 ? 's' : ''}</div></div>
+    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+  </div>`;
+
+  html += '<div class="section-label" style="padding-top:16px;">Folders</div>';
+  folders.forEach(f => {
+    const count = ideas.filter(i => (i.folder || '') === f).length;
+    html += `<div class="folder-row" onclick="openFolderDetail('${escHtml(f)}', '${escHtml(f)}')">
+      <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+      <div class="folder-info"><div class="folder-name">${escHtml(f)}</div><div class="folder-count">${count} idea${count !== 1 ? 's' : ''}</div></div>
+      <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function getFolders() {
+  const seen = new Set();
+  ideas.forEach(i => { if (i.folder) seen.add(i.folder); });
+  return [...seen].sort();
+}
+
+function openFolderDetail(folder, label) {
+  const container = document.getElementById('folder-detail-content');
+  const filterFolder = folder === '__all__' ? null : folder;
+  renderFoldersScreen(container, filterFolder === null ? '' : filterFolder, label);
+  const btn = document.querySelector('#screen-folder-detail .back-btn span') || document.querySelector('#screen-folder-detail .back-btn');
+  document.querySelector('#screen-folder-detail .topbar').innerHTML = `
+    <button class="back-btn" onclick="showNavScreen('screen-folders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+      Folders
+    </button>
+    <span style="font-size:13px;font-weight:500;color:var(--text-3);">${escHtml(label)}</span>`;
+  showNavScreen('screen-folder-detail');
+}
+
+// ─── Detail ───────────────────────────────────────────────────────────────────
+function openIdea(id, fromScreen) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  currentIdeaId = id;
+  detailFromScreen = fromScreen || activeNavScreen;
+  document.getElementById('detail-back-label').textContent =
+    detailFromScreen === 'screen-folder-detail' ? 'Folder' : 'Home';
+
+  const bulletsHtml = (idea.bullets || []).map(b =>
+    `<li><div class="bullet"></div>${escHtml(b)}</li>`).join('');
+  const tagsHtml = (idea.tags || []).map((t, i) =>
+    `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}</span>`).join('');
+
+  const relatedIdeas = (idea.relatedTo || [])
+    .map(rid => ideas.find(i => i.id === rid))
+    .filter(Boolean);
+  const relatedHtml = relatedIdeas.length ? `
+    <div class="block">
+      <div class="block-label">Connected ideas</div>
+    </div>
+    <div class="related-list">
+      ${relatedIdeas.map(r => `
+        <div class="related-row" onclick="openIdea('${r.id}', 'screen-detail')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          ${escHtml(r.title)}
+        </div>`).join('')}
+    </div>` : '';
+
+  const folderBadge = `
+    <span class="folder-badge" title="Double-tap to edit folder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span class="fb-text" ondblclick="startEdit(this,'folder')">${idea.folder ? escHtml(idea.folder) : 'No folder'}</span>
+    </span>`;
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-title" ondblclick="startEdit(this,'title')" title="Double-tap to edit">${escHtml(idea.title)}</div>
+      <div class="detail-time">${timeAgo(idea.createdAt)}</div>
+    </div>
+    <div class="detail-context">
+      ${folderBadge}
+      <div class="detail-tags" id="detail-tags" ondblclick="startEdit(this,'tags')" title="Double-tap to edit tags">${tagsHtml}</div>
+    </div>
+    <div class="detail-desc" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
+    <div class="block">
+      <div class="block-label">Summary</div>
+      <ul class="summary-list">${bulletsHtml}</ul>
+    </div>
+    ${relatedHtml}
+    <div class="divider-line"></div>
+    <button class="transcript-toggle" onclick="toggleTranscript()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Original transcript
+      <svg class="chevron" id="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="transcript-box" id="transcript-box" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${escHtml(idea.transcript || '')}</div>
+  `;
+
+  // reflect pin state on the topbar button
+  const pinBtn = document.getElementById('pin-btn');
+  if (pinBtn) {
+    const path = pinBtn.querySelector('svg');
+    if (idea.pinned) { path.setAttribute('fill', 'var(--orange)'); path.setAttribute('stroke', 'var(--orange)'); pinBtn.title = 'Unpin'; }
+    else { path.setAttribute('fill', 'none'); path.setAttribute('stroke', 'currentColor'); pinBtn.title = 'Pin'; }
+  }
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-detail').classList.add('active');
+  document.getElementById('bottom-nav').style.display = 'flex';
+}
+
+function togglePinCurrentIdea() {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  idea.pinned = !idea.pinned;
+  saveIdeas();
+  renderInbox();
+  openIdea(currentIdeaId, detailFromScreen);
+  showToast(idea.pinned ? 'Pinned' : 'Unpinned');
+}
+
+function toggleTranscript() {
+  const box = document.getElementById('transcript-box');
+  const ch = document.getElementById('chevron');
+  box.classList.toggle('open');
+  ch.style.transform = box.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// Double-tap any detail field to edit it in place (orange caret via CSS)
+function startEdit(el, field) {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  if (field === 'tags') el.textContent = (idea.tags || []).join(', ');
+  else if (field === 'folder') el.textContent = idea.folder || '';
+  el.contentEditable = 'true';
+  el.classList.add('editing');
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.addEventListener('blur', () => endEdit(el, field), { once: true });
+}
+
+function endEdit(el, field) {
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  const text = el.textContent.trim();
+  if (field === 'title') idea.title = text;
+  else if (field === 'description') idea.description = text;
+  else if (field === 'transcript') idea.transcript = text;
+  else if (field === 'tags') idea.tags = text.split(',').map(t => t.trim()).filter(Boolean);
+  else if (field === 'folder') idea.folder = text;
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  updateSettingsCount();
+  // tags/folder need a re-render to redraw pills/badge; reopen the detail
+  if (field === 'tags' || field === 'folder') openIdea(currentIdeaId, detailFromScreen);
+}
+
+function copyCurrentIdea() {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  const text = (idea.title || '') + '\n\n' + (idea.description || '');
+  try {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied'), () => showToast('Copy failed'));
+  } catch (e) {
+    showToast('Copy failed');
+  }
+}
+
+async function shareCurrentIdea() {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  const text = (idea.title || '') + '\n\n' + (idea.description || '');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: idea.title || 'Idea', text });
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // user cancelled
+      copyCurrentIdea();
+    }
+  } else {
+    copyCurrentIdea();
+    showToast('Copied — sharing not supported here');
+  }
+}
+
+function deleteCurrentIdea() {
+  if (!currentIdeaId) return;
+  if (!confirm('Delete this idea?')) return;
+  ideas = ideas.filter(i => i.id !== currentIdeaId);
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  updateSettingsCount();
+  showNavScreen('screen-inbox');
+  showToast('Idea deleted');
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function openSearch() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-search').classList.add('active');
+  document.getElementById('bottom-nav').style.display = 'none';
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+}
+
+function closeSearch() {
+  document.getElementById('search-input').value = '';
+  showNavScreen(activeNavScreen);
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  renderSearchResults([]);
+  document.getElementById('search-content').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg></div>
+      <div class="empty-title">Search your ideas</div>
+      <div class="empty-sub">Type any word or concept — even if it wasn't in your original idea</div>
+    </div>`;
+}
+
+let searchDebounce = null;
+function handleSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  document.getElementById('search-clear').style.display = q ? 'block' : 'none';
+  clearTimeout(searchDebounce);
+  if (!q) { clearSearch(); return; }
+  searchDebounce = setTimeout(() => runSearch(q), 300);
+}
+
+function runSearch(q) {
+  const lower = q.toLowerCase();
+  const scored = ideas.map(idea => {
+    let score = 0;
+    const fields = [
+      idea.title, idea.description,
+      (idea.bullets || []).join(' '),
+      idea.transcript || '',
+      (idea.tags || []).join(' ')
+    ].join(' ').toLowerCase();
+    if (fields.includes(lower)) score += 3;
+    // partial word matching
+    lower.split(/\s+/).forEach(word => {
+      if (word.length > 2 && fields.includes(word)) score += 1;
+    });
+    return { idea, score };
+  }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+  renderSearchResults(scored.map(x => x.idea));
+}
+
+function renderSearchResults(results) {
+  const container = document.getElementById('search-content');
+  if (results.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:40px 0"><div class="empty-title">No matching ideas</div><div class="empty-sub">Try different words or add more ideas</div></div>`;
+    return;
+  }
+  const now = Date.now();
+  let html = `<div class="section-label">${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
+  results.forEach(idea => { html += ideaRowHTML(idea, now, `openIdea('${idea.id}', 'screen-inbox')`); });
+  container.innerHTML = html;
+}
+
+function searchTag(tag) {
+  openSearch();
+  setTimeout(() => {
+    document.getElementById('search-input').value = tag;
+    document.getElementById('search-clear').style.display = 'block';
+    runSearch(tag);
+  }, 150);
+}
+
+// ─── Recording ────────────────────────────────────────────────────────────────
+let isRecording = false;
+
+function startRecording() {
+  stopVoiceTrigger();
+  currentTranscript = '';
+  displayAnchor = 0;
+  isRecording = true;
+  document.getElementById('rec-error').classList.remove('show');
+  const hint = document.getElementById('rec-hint');
+  hint.textContent = 'listening...';
+  hint.classList.add('placeholder');
+  hint.classList.remove('faded');
+  document.getElementById('rec-waveform').style.opacity = '1';
+  hideOverlays();
+  document.getElementById('overlay-recording').classList.add('active');
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showRecError('Speech recognition not supported. Use Chrome or Safari.');
+    return;
+  }
+  startWaveform();
+  startRecognitionInstance(SpeechRecognition);
+}
+
+function startRecognitionInstance(SpeechRecognition) {
+  if (!isRecording) return;
+  // Always get the constructor — passed on first call, looked up on restart
+  const SR = SpeechRecognition || window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (e) => {
+    let interim = '', finalChunk = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalChunk += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    if (finalChunk) currentTranscript = (currentTranscript + ' ' + finalChunk).trim();
+    const hint = document.getElementById('rec-hint');
+    // Only show words spoken since the last pause — after silence we start fresh from the new word
+    const sincePause = (currentTranscript.slice(displayAnchor) + ' ' + interim).trim();
+    if (sincePause) {
+      // Show only the last few words — calm, ambient feedback
+      const tail = sincePause.split(/\s+/).slice(-5).join(' ');
+      hint.textContent = tail;
+      hint.classList.remove('placeholder');
+      hint.classList.remove('faded'); // speech detected → bring text back
+      resetSilenceTimer();
+    } else {
+      hint.textContent = 'listening...';
+      hint.classList.add('placeholder');
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      showRecError('Microphone access denied. Check browser permissions and try again.');
+    } else if (e.error === 'audio-capture') {
+      showRecError('No microphone found. Plug one in and try again.');
+    } else if (e.error === 'network') {
+      showRecError('Network error — speech recognition needs internet on Chrome.');
+    }
+    // 'no-speech' and 'aborted' are normal — onend will restart
+  };
+
+  recognition.onend = () => {
+    // Create a fresh instance — restarting the same object is unreliable
+    if (isRecording) setTimeout(() => startRecognitionInstance(), 150);
+  };
+
+  try {
+    recognition.start();
+  } catch(e) {
+    // Already started — wait and retry
+    setTimeout(() => startRecognitionInstance(), 300);
+  }
+}
+
+// Fade the on-screen words out after a short pause in speech
+let silenceTimer = null;
+function resetSilenceTimer() {
+  clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(() => {
+    const hint = document.getElementById('rec-hint');
+    if (hint && !hint.classList.contains('placeholder')) {
+      hint.classList.add('faded');
+      displayAnchor = currentTranscript.length; // next words shown fresh, not appended to the faded sentence
+    }
+  }, 800);
+}
+function clearSilenceTimer() { clearTimeout(silenceTimer); silenceTimer = null; }
+
+function stopRecording() {
+  isRecording = false;
+  clearSilenceTimer();
+  stopWaveform();
+  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+  hideOverlays();
+  if (!currentTranscript.trim()) { showToast('No speech detected — try again'); restartVoiceTrigger(); return; }
+  showProcessing();
+}
+
+function cancelRecording() {
+  isRecording = false;
+  clearSilenceTimer();
+  stopWaveform();
+  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+  hideOverlays();
+  restartVoiceTrigger();
+}
+
+function showRecError(msg) {
+  clearSilenceTimer();
+  stopWaveform();
+  document.getElementById('rec-error').textContent = msg;
+  document.getElementById('rec-error').classList.add('show');
+  document.getElementById('rec-waveform').style.opacity = '0.2';
+  document.getElementById('rec-hint').textContent = '';
+}
+
+// ─── Voice-reactive waveform (Web Audio API) ──────────────────────────────────
+let audioCtx = null, analyser = null, micStream = null, waveRAF = null;
+async function startWaveform() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    analyser.smoothingTimeConstant = 0.75;
+    source.connect(analyser);
+    const bars = document.querySelectorAll('#rec-waveform .wave-bar');
+    document.getElementById('rec-waveform').classList.add('reactive');
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      bars.forEach((bar, i) => {
+        // Spread bars across low→high frequency bins for a symmetric look
+        const idx = 2 + i * 3;
+        const v = (data[idx] || 0) / 255;
+        bar.style.height = (6 + v * 32) + 'px';
+      });
+      waveRAF = requestAnimationFrame(tick);
+    };
+    tick();
+  } catch(e) {
+    // Mic blocked or unavailable — fall back to the CSS animation (no reactive class)
+  }
+}
+function stopWaveform() {
+  if (waveRAF) { cancelAnimationFrame(waveRAF); waveRAF = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx) { try { audioCtx.close(); } catch(e) {} audioCtx = null; }
+  analyser = null;
+  const wf = document.getElementById('rec-waveform');
+  wf.classList.remove('reactive');
+  wf.querySelectorAll('.wave-bar').forEach(b => b.style.height = '');
+}
+
+// ─── Processing (Gemini AI) ───────────────────────────────────────────────────
+const QUOTES = [
+  { t: 'The best way to have a good idea is to have a lot of ideas.', a: 'Linus Pauling' },
+  { t: 'Imagination is more important than knowledge.', a: 'Albert Einstein' },
+  { t: 'Creativity takes courage.', a: 'Henri Matisse' },
+  { t: 'Have no fear of perfection — you’ll never reach it.', a: 'Salvador Dalí' },
+  { t: 'Ideas are like rabbits. You learn how to handle them, and pretty soon you have a dozen.', a: 'John Steinbeck' },
+  { t: 'Curiosity about life in all of its aspects is the secret of great creative people.', a: 'Leo Burnett' },
+  { t: 'Every child is an artist. The problem is staying one as we grow up.', a: 'Pablo Picasso' },
+  { t: 'I have not failed. I’ve just found 10,000 ways that won’t work.', a: 'Thomas Edison' },
+  { t: 'The chief enemy of creativity is good sense.', a: 'Pablo Picasso' },
+];
+
+function showLoadingQuote() {
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  document.getElementById('proc-quote').textContent = '“' + q.t + '”';
+  document.getElementById('proc-quote-author').textContent = '— ' + q.a;
+  document.getElementById('proc-loading').classList.add('show');
+  document.getElementById('overlay-processing').classList.remove('centered');
+  document.getElementById('overlay-processing').classList.add('loading');
+}
+function hideLoadingQuote() {
+  document.getElementById('proc-loading').classList.remove('show');
+  document.getElementById('overlay-processing').classList.remove('loading');
+}
+
+function showProcessing() {
+  document.getElementById('processing-transcript').textContent = currentTranscript;
+  document.getElementById('processing-status').innerHTML = '';
+  document.getElementById('processing-error').classList.remove('show');
+  document.getElementById('result-preview').classList.remove('show');
+  document.getElementById('folder-picker').classList.remove('show');
+  document.getElementById('save-idea-btn').disabled = true;
+  // Transcript starts hidden behind the toggle
+  document.getElementById('transcript-toggle').classList.remove('show', 'open');
+  document.getElementById('transcript-wrap').classList.remove('show');
+  document.getElementById('transcript-toggle-label').textContent = 'Show original transcript';
+  pendingIdea = null;
+  hideOverlays();
+  document.getElementById('overlay-processing').classList.add('active');
+  showLoadingQuote();
+
+  const key = getApiKey();
+  if (!key) {
+    saveWithoutAI();
+    return;
+  }
+  callGemini(currentTranscript, key);
+}
+
+// Review-screen transcript: collapsible + double-tap to edit (type or phone dictation)
+function toggleReviewTranscript() {
+  const toggle = document.getElementById('transcript-toggle');
+  const wrap = document.getElementById('transcript-wrap');
+  const open = wrap.classList.toggle('show');
+  toggle.classList.toggle('open', open);
+  document.getElementById('transcript-toggle-label').textContent =
+    open ? 'Hide original transcript' : 'Show original transcript';
+}
+
+let transcriptBeforeEdit = '';
+function editTranscript() {
+  const el = document.getElementById('processing-transcript');
+  if (el.isContentEditable) return;
+  transcriptBeforeEdit = el.textContent.trim();
+  el.contentEditable = 'true';
+  el.focus();
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  el.addEventListener('blur', finishEditTranscript, { once: true });
+}
+function finishEditTranscript() {
+  const el = document.getElementById('processing-transcript');
+  el.contentEditable = 'false';
+  const newText = el.textContent.trim();
+  if (!newText || newText === transcriptBeforeEdit) return; // no real change
+  currentTranscript = newText;
+  const key = getApiKey();
+  if (!key) return; // no AI to re-run; corrected text will be saved as-is
+  // Re-summarize with the corrected transcript
+  document.getElementById('result-preview').classList.remove('show');
+  document.getElementById('folder-picker').classList.remove('show');
+  document.getElementById('save-idea-btn').disabled = true;
+  showLoadingQuote();
+  callGemini(currentTranscript, key);
+}
+
+async function callGemini(transcript, apiKey) {
+  const existingTags = [...new Set(ideas.flatMap(i => i.tags || []))].slice(0, 20).join(', ');
+  const existingFolders = getFolders().join(', ');
+  const ideasContext = ideas.slice(0, 10).map(i => `[${i.id}] ${i.title}: ${i.description}`).join('\n');
+
+  const prompt = `Summarize this spoken idea and return ONLY valid JSON with no markdown, no backticks, no explanation.
+
+Transcript: "${transcript}"
+
+Context:
+- Existing tags to reuse if relevant: ${existingTags || 'none yet'}
+- Existing folders to reuse if relevant: ${existingFolders || 'none yet'}
+- Recent ideas (for detecting connections):
+${ideasContext || 'none yet'}
+
+Return exactly this JSON:
+{
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "bullets": ["Key point 1", "Key point 2", "Key point 3"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]
+}
+
+Rules:
+- bullets: 2-4 concise points, each under 15 words
+- tags: 1-3 lowercase single words, reuse existing tags where possible
+- folder: reuse an existing folder if it fits, suggest a new short name, or null
+- relatedTo: only IDs from the recent ideas list above, only if clearly related
+- Return ONLY the JSON, nothing else`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (!parsed.title || !parsed.bullets) throw new Error('Invalid response format');
+    showResult(parsed);
+  } catch(e) {
+    showProcessingError(e.message);
+  }
+}
+
+function saveWithoutAI() {
+  const words = currentTranscript.split(/\s+/).filter(Boolean);
+  const title = words.slice(0, 6).join(' ') || 'Untitled idea';
+  showResult({
+    title,
+    description: currentTranscript.slice(0, 120),
+    bullets: [currentTranscript.slice(0, 100)],
+    tags: [],
+    folder: null,
+    relatedTo: []
+  }, true);
+}
+
+function showResult(parsed, noAI) {
+  pendingIdea = {
+    id: Date.now().toString(),
+    title: parsed.title,
+    description: parsed.description || '',
+    bullets: parsed.bullets || [],
+    tags: parsed.tags || [],
+    folder: parsed.folder || null,
+    relatedTo: (parsed.relatedTo || []).filter(id => ideas.some(i => i.id === id)),
+    transcript: currentTranscript,
+    createdAt: Date.now()
+  };
+
+  hideLoadingQuote();
+  document.getElementById('overlay-processing').classList.add('centered');
+  document.getElementById('processing-status').innerHTML = '';
+
+  const previewTagsHtml = (parsed.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+  document.getElementById('result-preview').innerHTML = `
+    <div class="result-title">${escHtml(parsed.title)}</div>
+    <div class="result-desc">${escHtml(parsed.description)}</div>
+    <div class="result-tags">${previewTagsHtml}</div>
+    ${parsed.folder ? `<div class="result-folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>${escHtml(parsed.folder)}</div>` : ''}
+  `;
+  document.getElementById('result-preview').classList.add('show');
+
+  // Folder picker
+  populateFolderPicker(parsed.folder);
+  document.getElementById('folder-picker').classList.add('show');
+  // Make the (collapsed) original transcript available to review/edit
+  document.getElementById('processing-transcript').textContent = currentTranscript;
+  document.getElementById('transcript-toggle').classList.add('show');
+  document.getElementById('save-idea-btn').disabled = false;
+}
+
+function populateFolderPicker(suggestedFolder) {
+  const select = document.getElementById('folder-select');
+  select.innerHTML = '<option value="">No folder</option>';
+  getFolders().forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    select.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__'; newOpt.textContent = '+ New folder...';
+  select.appendChild(newOpt);
+  if (suggestedFolder) {
+    const exists = getFolders().includes(suggestedFolder);
+    if (exists) {
+      select.value = suggestedFolder;
+    } else {
+      const opt = document.createElement('option');
+      opt.value = suggestedFolder; opt.textContent = suggestedFolder + ' (suggested)';
+      select.insertBefore(opt, newOpt);
+      select.value = suggestedFolder;
+    }
+  }
+}
+
+function handleFolderSelect() {
+  const val = document.getElementById('folder-select').value;
+  const newInput = document.getElementById('folder-new-input');
+  if (val === '__new__') {
+    newInput.classList.add('show');
+    newInput.focus();
+  } else {
+    newInput.classList.remove('show');
+  }
+}
+
+function showProcessingError(msg) {
+  document.getElementById('processing-status').innerHTML = '';
+  document.getElementById('processing-error').textContent = 'AI error: ' + msg + '. Check your API key in Settings, or save without AI.';
+  document.getElementById('processing-error').classList.add('show');
+  // Still allow saving without AI result
+  saveWithoutAI();
+}
+
+function saveIdea() {
+  if (!pendingIdea) return;
+
+  // Apply folder selection
+  const selectVal = document.getElementById('folder-select').value;
+  const newFolderVal = document.getElementById('folder-new-input').value.trim();
+  if (selectVal === '__new__') {
+    pendingIdea.folder = newFolderVal || null;
+  } else {
+    pendingIdea.folder = selectVal || null;
+  }
+
+  ideas.unshift(pendingIdea);
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  updateSettingsCount();
+  hideOverlays();
+  currentTranscript = '';
+  pendingIdea = null;
+  restartVoiceTrigger();
+  showToast('Idea saved');
+}
+
+function cancelProcessing() {
+  hideOverlays();
+  currentTranscript = '';
+  pendingIdea = null;
+  restartVoiceTrigger();
+}
+
+// ─── Persistence ──────────────────────────────────────────────────────────────
+function saveIdeas() {
+  localStorage.setItem('spark-ideas', JSON.stringify(ideas));
+}
+
+// ─── Voice trigger ────────────────────────────────────────────────────────────
+function toggleVoiceTrigger() {
+  const on = document.getElementById('voice-trigger-toggle').checked;
+  localStorage.setItem('spark-voice-trigger', on ? '1' : '0');
+  if (on) startVoiceTrigger(); else stopVoiceTrigger();
+}
+
+function startVoiceTrigger() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition || triggerRecognition) return;
+  triggerRecognition = new SpeechRecognition();
+  triggerRecognition.continuous = true;
+  triggerRecognition.interimResults = true;
+  triggerRecognition.lang = 'en-US';
+
+  triggerRecognition.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const text = e.results[i][0].transcript.toLowerCase();
+      if (text.includes('i have an idea') || text.includes('i have idea')) {
+        showVoiceIndicator();
+        startRecording();
+        return;
+      }
+    }
+  };
+
+  triggerRecognition.onend = () => {
+    // Auto-restart unless explicitly stopped
+    if (localStorage.getItem('spark-voice-trigger') === '1' && !recognition) {
+      setTimeout(startVoiceTrigger, 1000);
+    }
+  };
+
+  triggerRecognition.onerror = (e) => {
+    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      triggerRecognition = null;
+    }
+  };
+
+  try {
+    triggerRecognition.start();
+    document.getElementById('voice-indicator').classList.add('show');
+  } catch(e) {
+    triggerRecognition = null;
+  }
+}
+
+function stopVoiceTrigger() {
+  if (triggerRecognition) {
+    try { triggerRecognition.stop(); } catch(e) {}
+    triggerRecognition = null;
+  }
+  document.getElementById('voice-indicator').classList.remove('show');
+}
+
+function restartVoiceTrigger() {
+  if (localStorage.getItem('spark-voice-trigger') === '1') {
+    setTimeout(startVoiceTrigger, 800);
+  }
+}
+
+function showVoiceIndicator() {
+  const el = document.getElementById('voice-indicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000), hr = Math.floor(diff / 3600000), day = Math.floor(diff / 86400000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  if (hr < 24) return `${hr}h ago`;
+  if (day === 1) return 'yesterday';
+  return `${day} days ago`;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
