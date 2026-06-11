@@ -9,15 +9,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Spark">
 <link rel="apple-touch-icon" href="icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #ffffff; --bg-2: #f7f7f5; --bg-3: #efeeeb;
-    --border: rgba(0,0,0,0.07); --border-strong: rgba(0,0,0,0.12);
-    --text: #191919; --text-2: #6b6b6b; --text-3: #aaa;
+    --bg: #ffffff; --bg-2: #f2f2f7; --bg-3: #e5e5ea;
+    --border: rgba(60,60,67,0.18); --border-strong: rgba(60,60,67,0.29);
+    --text: #1c1c1e; --text-2: rgba(60,60,67,0.6); --text-3: rgba(60,60,67,0.3);
     --orange: #F46B0E; --orange-light: #FEF0E6; --orange-mid: #FDDBC2;
-    --tag-bg: #f0eeeb; --tag-text: #666;
+    --tag-bg: #f2f2f7; --tag-text: rgba(60,60,67,0.6);
     --font: 'Geist', -apple-system, sans-serif;
     --mono: 'Geist Mono', monospace;
     --nav-h: 64px;
@@ -39,9 +39,9 @@
 
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: max(18px, env(safe-area-inset-top)) 24px 0; flex-shrink: 0;
+    padding: max(18px, env(safe-area-inset-top)) 20px 4px; flex-shrink: 0;
   }
-  .topbar-title { font-size: 13px; font-weight: 500; color: var(--text-3); letter-spacing: 0.04em; }
+  .topbar-title { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; line-height: 1.1; }
   .icon-btn {
     width: 32px; height: 32px; border: none; background: none; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
@@ -59,16 +59,36 @@
   .back-btn:hover { color: var(--text); }
   .back-btn svg { width: 16px; height: 16px; }
 
+  /* Note 3-dot menu */
+  .more-menu {
+    position: absolute; top: 38px; right: 0; min-width: 190px;
+    background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+    padding: 6px; z-index: 30; display: none; flex-direction: column;
+    transform-origin: top right;
+  }
+  .more-menu.open { display: flex; animation: menu-pop 0.12s ease-out; }
+  @keyframes menu-pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  .more-item {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    border: none; background: none; cursor: pointer; border-radius: 9px;
+    padding: 11px 12px; font-family: var(--font); font-size: 16px;
+    color: var(--text); text-align: left;
+  }
+  .more-item:hover { background: var(--bg-2); }
+  .more-item svg { width: 19px; height: 19px; flex-shrink: 0; }
+  .more-item.danger { color: #eb5757; }
+
   .content { flex: 1; overflow-y: auto; padding: 0 24px 20px; }
   .content::-webkit-scrollbar { display: none; }
 
   .section-label {
-    font-size: 11px; font-weight: 500; color: var(--text-3);
-    letter-spacing: 0.07em; text-transform: uppercase; padding: 20px 0 12px;
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    letter-spacing: 0.02em; text-transform: uppercase; padding: 20px 0 10px;
   }
   .section-label.today {
-    font-size: 16px; font-weight: 600; color: var(--text);
-    letter-spacing: -0.2px; text-transform: none;
+    font-size: 22px; font-weight: 700; color: var(--text);
+    letter-spacing: -0.3px; text-transform: none;
   }
 
   /* Empty state */
@@ -90,12 +110,12 @@
   .idea-row:hover { background: var(--bg-2); }
   .idea-row:last-child { border-bottom: none; }
   .idea-body { flex: 1; min-width: 0; }
-  .idea-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
-  .idea-desc { font-size: 12px; color: var(--text-2); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .idea-meta { display: flex; gap: 6px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
-  .tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--tag-bg); color: var(--tag-text); }
+  .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 3px; letter-spacing: -0.2px; }
+  .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .idea-meta { display: flex; gap: 8px; align-items: center; margin-top: 9px; flex-wrap: wrap; }
+  .tag { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--tag-bg); color: var(--tag-text); }
   .tag.orange { background: var(--orange-light); color: var(--orange); }
-  .idea-time { font-size: 11px; color: var(--text-3); }
+  .idea-time { font-size: 12px; color: var(--text-3); }
 
   .view-more-btn {
     width: 100%; border: none; background: none; cursor: pointer;
@@ -105,21 +125,26 @@
   .view-more-btn:hover { color: var(--text); }
   .view-more-btn svg { width: 14px; height: 14px; }
 
-  /* FAB */
-  .fab {
-    position: absolute; bottom: calc(var(--nav-h) + 16px); right: 24px;
-    width: 56px; height: 56px; border-radius: 50%;
+  /* Profile avatar (top-right) */
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--orange-light); color: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font); font-size: 15px; font-weight: 600;
+    transition: transform 0.12s;
+  }
+  .avatar:active { transform: scale(0.94); }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+  /* Centered create button in bottom nav */
+  .nav-create {
+    width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
     background: var(--orange); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 20px rgba(244,107,14,0.35);
-    transition: transform 0.15s, opacity 0.15s; z-index: 10;
+    box-shadow: 0 6px 16px rgba(244,107,14,0.4);
+    transform: translateY(-14px); transition: transform 0.12s;
   }
-  .fab:hover { transform: scale(1.06); }
-  .fab:active { transform: scale(0.97); }
-  .fab svg { width: 24px; height: 24px; color: white; }
-  .fab img { width: 51px; height: 51px; object-fit: contain; }
-  .fab.recording { animation: fab-pulse 1s ease-in-out infinite; background: #d45800; }
-  @keyframes fab-pulse { 0%,100% { box-shadow: 0 4px 20px rgba(244,107,14,0.35); } 50% { box-shadow: 0 4px 32px rgba(244,107,14,0.7); } }
+  .nav-create:active { transform: translateY(-14px) scale(0.94); }
+  .nav-create svg { width: 28px; height: 28px; color: #fff; }
 
   /* Bottom nav */
   .bottom-nav {
@@ -127,7 +152,8 @@
     height: calc(var(--nav-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
-    border-top: 1px solid var(--border); display: flex; z-index: 15;
+    border-top: 1px solid var(--border); display: flex; align-items: center;
+    overflow: visible; z-index: 15;
   }
   .nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -140,11 +166,11 @@
 
   /* Detail */
   .detail-header { padding: 4px 24px 0; flex-shrink: 0; }
-  .detail-title { font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; line-height: 1.22; margin-bottom: 6px; }
-  .detail-time { font-size: 12px; color: var(--text-3); }
-  .detail-desc { font-size: 15px; color: var(--text-2); line-height: 1.55; padding: 4px 24px 4px; }
+  .detail-title { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 8px; }
+  .detail-time { font-size: 13px; color: var(--text-3); }
+  .detail-desc { font-size: 17px; color: var(--text); line-height: 1.5; padding: 8px 20px 4px; }
   .detail-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-  .tag-pill { font-size: 11px; padding: 3px 9px; border-radius: 4px; background: var(--tag-bg); color: var(--tag-text); cursor: pointer; transition: background 0.1s; }
+  .tag-pill { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--tag-bg); color: var(--tag-text); cursor: pointer; transition: background 0.1s; }
   .tag-pill:hover { background: var(--orange-mid); }
   .tag-pill.orange { background: var(--orange-light); color: var(--orange); }
   .folder-badge {
@@ -158,10 +184,10 @@
   [contenteditable].editing { background: var(--bg-2); border-radius: 6px; box-shadow: 0 0 0 2px var(--orange-light); }
 
   .block { padding: 20px 24px 0; }
-  .block-label { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
-  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-  .summary-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text); line-height: 1.55; }
-  .bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); margin-top: 8px; flex-shrink: 0; }
+  .block-label { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 12px; }
+  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .summary-list li { display: flex; gap: 11px; align-items: flex-start; font-size: 17px; color: var(--text); line-height: 1.45; }
+  .bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); margin-top: 9px; flex-shrink: 0; }
 
   .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
 
@@ -458,15 +484,15 @@
   <!-- HOME -->
   <div class="screen active" id="screen-inbox">
     <div class="topbar">
-      <span class="topbar-title">ideas</span>
-      <button class="icon-btn icon-btn-search" onclick="openSearch()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
-      </button>
+      <span class="topbar-title">Ideas</span>
+      <div class="topbar-actions">
+        <button class="icon-btn icon-btn-search" onclick="openSearch()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
+        </button>
+        <button class="avatar" onclick="showNavScreen('screen-settings')" aria-label="Settings">G</button>
+      </div>
     </div>
     <div id="inbox-content" class="content"></div>
-    <button class="fab" onclick="startRecording()">
-      <img src="icon3.png" alt="Capture idea">
-    </button>
     <div class="voice-indicator" id="voice-indicator">
       <div class="voice-dot"></div>
       listening for "I have an idea"
@@ -503,12 +529,12 @@
   <!-- FOLDERS SCREEN -->
   <div class="screen" id="screen-folders">
     <div class="topbar">
-      <span class="topbar-title">folders</span>
+      <span class="topbar-title">Folders</span>
+      <div class="topbar-actions">
+        <button class="avatar" onclick="showNavScreen('screen-settings')" aria-label="Settings">G</button>
+      </div>
     </div>
     <div id="folders-content" class="content"></div>
-    <button class="fab" onclick="startRecording()">
-      <img src="icon3.png" alt="Capture idea">
-    </button>
   </div>
 
   <!-- FOLDER DETAIL -->
@@ -520,9 +546,6 @@
       </button>
     </div>
     <div id="folder-detail-content" class="content" style="padding-top:0;"></div>
-    <button class="fab" onclick="startRecording()">
-      <img src="icon3.png" alt="Capture idea">
-    </button>
   </div>
 
   <!-- SETTINGS SCREEN -->
@@ -584,25 +607,34 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         <span id="detail-back-label">Home</span>
       </button>
-      <div style="display:flex; align-items:center; gap:2px;">
-        <button class="icon-btn" id="pin-btn" onclick="togglePinCurrentIdea()" title="Pin">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><path d="M12 16v4"/></svg>
-        </button>
-        <button class="icon-btn" onclick="copyCurrentIdea()" title="Copy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        </button>
+      <div style="display:flex; align-items:center; gap:2px; position:relative;">
         <button class="icon-btn" onclick="shareCurrentIdea()" title="Share">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
         </button>
-        <button class="icon-btn" onclick="deleteCurrentIdea()" title="Delete">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <button class="icon-btn" id="more-btn" onclick="toggleMoreMenu(event)" title="More">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
         </button>
+        <div class="more-menu" id="more-menu">
+          <button class="more-item" id="more-pin" onclick="togglePinCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><path d="M12 16v4"/></svg>
+            <span id="more-pin-label">Pin</span>
+          </button>
+          <button class="more-item" onclick="moveCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Move…</span>
+          </button>
+          <button class="more-item" onclick="copyCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy</span>
+          </button>
+          <button class="more-item danger" onclick="deleteCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
     </div>
-    <div class="content" id="detail-content" style="padding-top:8px; padding-bottom:80px;"></div>
-    <button class="fab" onclick="startRecording()">
-      <img src="icon3.png" alt="Capture idea">
-    </button>
+    <div class="content" id="detail-content" style="padding-top:8px; padding-bottom:40px;"></div>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -611,13 +643,12 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
+    <button class="nav-create" onclick="startRecording()" aria-label="New idea">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
     <button class="nav-item" id="nav-folders" onclick="showNavScreen('screen-folders')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       Folders
-    </button>
-    <button class="nav-item" id="nav-settings" onclick="showNavScreen('screen-settings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
     </button>
   </nav>
 
@@ -741,8 +772,7 @@ function showNavScreen(id) {
   const navMap = {
     'screen-inbox': 'nav-home',
     'screen-folders': 'nav-folders',
-    'screen-folder-detail': 'nav-folders',
-    'screen-settings': 'nav-settings'
+    'screen-folder-detail': 'nav-folders'
   };
   const navId = navMap[id];
   if (navId) document.getElementById(navId).classList.add('active');
@@ -964,13 +994,10 @@ function openIdea(id, fromScreen) {
     <div class="transcript-box" id="transcript-box" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${escHtml(idea.transcript || '')}</div>
   `;
 
-  // reflect pin state on the topbar button
-  const pinBtn = document.getElementById('pin-btn');
-  if (pinBtn) {
-    const path = pinBtn.querySelector('svg');
-    if (idea.pinned) { path.setAttribute('fill', 'var(--orange)'); path.setAttribute('stroke', 'var(--orange)'); pinBtn.title = 'Unpin'; }
-    else { path.setAttribute('fill', 'none'); path.setAttribute('stroke', 'currentColor'); pinBtn.title = 'Pin'; }
-  }
+  // reflect pin state in the more-menu
+  const pinLabel = document.getElementById('more-pin-label');
+  if (pinLabel) pinLabel.textContent = idea.pinned ? 'Unpin' : 'Pin';
+  closeMoreMenu();
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-detail').classList.add('active');
@@ -985,6 +1012,44 @@ function togglePinCurrentIdea() {
   renderInbox();
   openIdea(currentIdeaId, detailFromScreen);
   showToast(idea.pinned ? 'Pinned' : 'Unpinned');
+}
+
+// ─── Note "more" (3-dot) menu ──────────────────────────────────────────────────
+function toggleMoreMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('more-menu');
+  menu.classList.toggle('open');
+}
+function closeMoreMenu() {
+  const menu = document.getElementById('more-menu');
+  if (menu) menu.classList.remove('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('more-menu');
+  if (!menu || !menu.classList.contains('open')) return;
+  if (menu.contains(e.target) || e.target.closest('#more-btn')) return;
+  closeMoreMenu();
+});
+
+function moveCurrentIdea() {
+  closeMoreMenu();
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  const folders = getFolders();
+  const list = folders.length ? folders.join('\n') + '\n' : '';
+  const choice = prompt(
+    'Move "' + (idea.title || 'idea') + '" to which folder?\n\n' +
+    'Existing folders:\n' + (list || '(none yet)\n') +
+    '\nType a folder name (new or existing), or leave blank for No folder:',
+    idea.folder || ''
+  );
+  if (choice === null) return; // cancelled
+  idea.folder = choice.trim();
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  openIdea(currentIdeaId, detailFromScreen);
+  showToast(idea.folder ? 'Moved to ' + idea.folder : 'Removed from folder');
 }
 
 function toggleTranscript() {
@@ -1032,6 +1097,7 @@ function endEdit(el, field) {
 }
 
 function copyCurrentIdea() {
+  closeMoreMenu();
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
   const text = (idea.title || '') + '\n\n' + (idea.description || '');
@@ -1060,6 +1126,7 @@ async function shareCurrentIdea() {
 }
 
 function deleteCurrentIdea() {
+  closeMoreMenu();
   if (!currentIdeaId) return;
   if (!confirm('Delete this idea?')) return;
   ideas = ideas.filter(i => i.id !== currentIdeaId);
