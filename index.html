@@ -719,8 +719,67 @@ let recognition = null;
 let triggerRecognition = null;
 let activeNavScreen = 'screen-inbox';
 
+// ─── Demo seed (runs once on a fresh device so the UI isn't empty) ──────────────
+function seedDemoIdeas() {
+  // Only ever seed once, and never after the user has their own data.
+  if (localStorage.getItem('spark-seeded') === '1') return;
+  if (ideas.length > 0) { localStorage.setItem('spark-seeded', '1'); return; }
+  const DAY = 86400000;
+  const now = Date.now();
+  const mk = (daysAgo, hour, title, description, folder, tags, bullets) => ({
+    id: 'demo-' + Math.random().toString(36).slice(2, 9),
+    title, description, folder, tags, bullets,
+    createdAt: now - daysAgo * DAY - (hour || 0) * 3600000,
+    transcript: '', relatedTo: [], pinned: false
+  });
+  ideas = [
+    // Today
+    mk(0, 2, 'Voice-first idea capture app',
+      'A frictionless way to capture a thought the instant it sparks, before it slips away — speak it and it organizes itself.',
+      'Products', ['app', 'voice'],
+      ['Capture ideas by voice with a single tap', 'Auto-tag and file into the right folder', 'Surface connections to past ideas']),
+    mk(0, 6, 'Critique campus wayfinding signage',
+      'The arrows in the science building point the wrong way at the east stairwell — redesign the whole floor system.',
+      'Design', ['ux', 'signage'],
+      ['Audit every junction for ambiguity', 'Test arrow + landmark combos', 'Mock up a consistent color-per-wing system']),
+    // This Week
+    mk(2, 0, 'Pop-up coffee cart',
+      'Mobile espresso cart for campus events with QR ordering so the line never backs up.',
+      'Business', ['coffee', 'popup'],
+      ['Bike-towable cart footprint', 'QR menu + pay before pickup', 'Partner with student orgs for events']),
+    mk(4, 0, 'Risograph zine for thesis show',
+      'A two-color riso zine documenting the studio process, handed out at the opening.',
+      'Personal', ['print', 'zine'],
+      ['Fluorescent pink + blue spreads', '16 pages, saddle stitch', 'Edition of 100']),
+    mk(5, 0, 'Portfolio site dark mode',
+      'Auto dark mode that respects system settings and keeps the work images readable.',
+      'Design', ['web', 'portfolio'],
+      ['Tokenize colors for easy theming', 'Dim image borders, not the work', 'Remember manual override']),
+    // This Month
+    mk(11, 0, 'Sustainable packaging for local honey',
+      'Refillable jar program with a paper-seal label so the brand feels handmade, not mass-produced.',
+      'Business', ['packaging', 'sustainability'],
+      ['Refill discount to drive returns', 'Seed-paper hang tags', 'One illustration per harvest season']),
+    mk(16, 0, 'Generative type poster series',
+      'Code-driven posters where the same headline distorts differently each run.',
+      'Design', ['type', 'generative'],
+      ['Variable font weight by noise field', 'Export print-ready SVGs', 'Series of 12, one per month']),
+    mk(21, 0, 'Habit tracker with friction',
+      'A tracker that makes skipping a habit slightly annoying instead of breaking the streak guilt-free.',
+      'Products', ['app', 'habits'],
+      ['Tiny delay before "skip"', 'Streaks that bend, not snap', 'Weekly reflection prompt']),
+    mk(26, 0, 'Short film about commuting',
+      'A quiet 4-minute film shot entirely from bus windows across one week.',
+      'Personal', ['film', 'video'],
+      ['Same seat, different days', 'Ambient sound only', 'Color-grade toward dusk'])
+  ];
+  localStorage.setItem('spark-ideas', JSON.stringify(ideas));
+  localStorage.setItem('spark-seeded', '1');
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
+  seedDemoIdeas();
   renderInbox();
   renderFolders();
   checkApiBanner();
@@ -808,7 +867,7 @@ function renderInbox() {
   const now = Date.now();
   const pinned = ideas.filter(i => i.pinned);
   const rest = ideas.filter(i => !i.pinned);
-  const buckets = { 'Today': [], 'This Week': [] };
+  const buckets = { 'Today': [], 'This Week': [], 'This Month': [] };
   rest.forEach(idea => {
     const b = dateBucket(idea.createdAt);
     if (b) buckets[b].push(idea); // older ideas (null) stay off Home
@@ -826,15 +885,20 @@ function renderInbox() {
     html += `<div class="section-label">This Week</div>`;
     buckets['This Week'].forEach(idea => { html += ideaRowHTML(idea, now); });
   }
+  if (buckets['This Month'].length) {
+    html += `<div class="section-label">This Month</div>`;
+    buckets['This Month'].forEach(idea => { html += ideaRowHTML(idea, now); });
+  }
   container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing recent</div><div class="empty-sub">Older ideas are in Folders and Search</div></div>`;
 }
 
-// Returns 'Today' | 'This Week', or null for older ideas (hidden from Home)
+// Returns 'Today' | 'This Week' | 'This Month', or null for older ideas (hidden from Home)
 function dateBucket(ts) {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (ts >= startOfToday) return 'Today';
   if (ts >= startOfToday - 6 * 86400000) return 'This Week';
+  if (ts >= startOfToday - 29 * 86400000) return 'This Month';
   return null;
 }
 
