@@ -84,7 +84,7 @@
 
   .section-label {
     font-size: 13px; font-weight: 600; color: var(--text-2);
-    letter-spacing: 0.02em; text-transform: uppercase; padding: 20px 0 10px;
+    letter-spacing: 0.02em; text-transform: uppercase; padding: 26px 0 12px;
   }
   .section-label.today {
     font-size: 22px; font-weight: 700; color: var(--text);
@@ -102,17 +102,24 @@
 
   /* Idea rows */
   .idea-row {
-    display: flex; align-items: flex-start; gap: 12px;
-    border-bottom: 1px solid var(--border); cursor: pointer;
+    position: relative;
+    display: flex; align-items: flex-start; gap: 14px;
+    cursor: pointer;
     transition: background 0.1s; border-radius: 6px;
-    margin: 0 -8px; padding: 13px 8px;
+    margin: 0 -8px; padding: 17px 8px;
   }
   .idea-row:hover { background: var(--bg-2); }
-  .idea-row:last-child { border-bottom: none; }
+  /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
+  .idea-row::after {
+    content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 85%; height: 2px; border-radius: 2px; background: rgba(60,60,67,0.09);
+  }
+  .idea-row:last-child::after,
+  .idea-row:has(+ .section-label)::after { display: none; }
   .idea-body { flex: 1; min-width: 0; }
-  .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 3px; letter-spacing: -0.2px; }
-  .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .idea-meta { display: flex; gap: 8px; align-items: center; margin-top: 9px; flex-wrap: wrap; }
+  .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.2px; }
+  .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .idea-meta { display: flex; gap: 8px; align-items: center; margin-top: 11px; flex-wrap: wrap; }
   .tag { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--tag-bg); color: var(--tag-text); }
   .tag.orange { background: var(--orange-light); color: var(--orange); }
   .idea-time { font-size: 12px; color: var(--text-3); }
@@ -145,6 +152,14 @@
   }
   .nav-create:active { transform: translateY(-14px) scale(0.94); }
   .nav-create svg { width: 28px; height: 28px; color: #fff; }
+
+  /* Subtle haptic-style feedback: a small orange glow that fades out fast */
+  @keyframes tap-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(244,107,14,0.40); }
+    100% { box-shadow: 0 0 0 9px rgba(244,107,14,0); }
+  }
+  .pulse { animation: tap-pulse 0.32s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 
   /* Bottom nav */
   .bottom-nav {
@@ -188,6 +203,7 @@
   .summary-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
   .summary-list li { display: flex; gap: 11px; align-items: flex-start; font-size: 17px; color: var(--text); line-height: 1.45; }
   .bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); margin-top: 9px; flex-shrink: 0; }
+  .bullet-text { flex: 1; min-width: 0; }
 
   .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
 
@@ -333,6 +349,22 @@
   .rec-stop:hover { transform: scale(1.05); }
   .rec-stop:active { transform: scale(0.96); }
   .rec-stop-inner { width: 24px; height: 24px; border-radius: 5px; background: white; }
+
+  /* Text-capture overlay */
+  #overlay-text {
+    justify-content: flex-start; gap: 16px;
+    padding: max(56px, calc(env(safe-area-inset-top) + 24px)) 24px 28px;
+  }
+  #overlay-text.active { animation: text-pop 0.2s ease-out; }
+  @keyframes text-pop { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: scale(1); } }
+  .text-capture { width: 100%; flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .text-input {
+    flex: 1; width: 100%; border: none; outline: none; resize: none;
+    font-family: var(--font); font-size: 22px; line-height: 1.45; color: var(--text);
+    letter-spacing: -0.3px; background: none; caret-color: var(--orange);
+  }
+  .text-input::placeholder { color: var(--text-3); }
+  .text-input::-webkit-scrollbar { display: none; }
 
   /* Processing / review overlay */
   #overlay-processing { justify-content: flex-start; gap: 0; padding: max(48px, calc(env(safe-area-inset-top) + 20px)) 24px 24px; }
@@ -580,6 +612,31 @@
         </div>
       </div>
       <div class="settings-section">
+        <div class="settings-label">Capture</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Text-only mode</div>
+            <div class="settings-row-sub">Tap + to type. Hold + to record by voice.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="text-only-toggle" onchange="toggleTextOnly()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Show demo ideas</div>
+            <div class="settings-row-sub">Sample ideas so the app isn't empty. Turn off to hide them.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="demo-toggle" onchange="toggleDemoIdeas()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+      <div class="settings-section">
         <div class="settings-label">Data</div>
         <div class="settings-row">
           <div class="settings-row-info">
@@ -609,7 +666,7 @@
       </button>
       <div style="display:flex; align-items:center; gap:2px; position:relative;">
         <button class="icon-btn" onclick="shareCurrentIdea()" title="Share">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
         </button>
         <button class="icon-btn" id="more-btn" onclick="toggleMoreMenu(event)" title="More">
           <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
@@ -643,7 +700,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
-    <button class="nav-create" onclick="startRecording()" aria-label="New idea">
+    <button class="nav-create" id="nav-create-btn" aria-label="New idea">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <button class="nav-item" id="nav-folders" onclick="showNavScreen('screen-folders')">
@@ -666,6 +723,18 @@
     <button class="rec-stop" id="rec-stop-btn" onclick="stopRecording()">
       <div class="rec-stop-inner"></div>
     </button>
+  </div>
+
+  <!-- TEXT-CAPTURE OVERLAY -->
+  <div class="overlay" id="overlay-text">
+    <div class="text-capture">
+      <div class="overlay-eyebrow">New idea</div>
+      <textarea id="text-input" class="text-input" placeholder="Type your idea…" autocomplete="off" autocorrect="on"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="cancelTextMode()">Cancel</button>
+      <button class="btn btn-primary" id="text-save-btn" onclick="saveTextIdea()">Save idea</button>
+    </div>
   </div>
 
   <!-- PROCESSING OVERLAY -->
@@ -719,20 +788,39 @@ let recognition = null;
 let triggerRecognition = null;
 let activeNavScreen = 'screen-inbox';
 
-// ─── Demo seed (runs once on a fresh device so the UI isn't empty) ──────────────
-function seedDemoIdeas() {
-  // Only ever seed once, and never after the user has their own data.
-  if (localStorage.getItem('spark-seeded') === '1') return;
-  if (ideas.length > 0) { localStorage.setItem('spark-seeded', '1'); return; }
+// ─── Feedback: best-effort vibrate (no-op on iOS) + tiny orange pulse ────────────
+function haptic(ms = 10) {
+  try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {}
+}
+function pulse(el) {
+  if (!el) return;
+  el.classList.remove('pulse');
+  void el.offsetWidth; // force reflow so the animation restarts
+  el.classList.add('pulse');
+  setTimeout(() => el.classList.remove('pulse'), 340);
+}
+
+// ─── Demo seed (always-available sample ideas, toggleable in Settings) ───────────
+function demoEnabled() {
+  return localStorage.getItem('spark-demo-enabled') !== '0'; // default ON
+}
+function isDemoIdea(i) {
+  return i.isDemo === true || (typeof i.id === 'string' && i.id.startsWith('demo-'));
+}
+function seedDemoIdeas(force) {
+  if (!demoEnabled()) return;
+  const hasDemos = ideas.some(isDemoIdea);
+  if (hasDemos && !force) return;        // demos already present — leave them
+  ideas = ideas.filter(i => !isDemoIdea(i)); // clear old demos before re-seeding
   const DAY = 86400000;
   const now = Date.now();
   const mk = (daysAgo, hour, title, description, folder, tags, bullets) => ({
     id: 'demo-' + Math.random().toString(36).slice(2, 9),
     title, description, folder, tags, bullets,
     createdAt: now - daysAgo * DAY - (hour || 0) * 3600000,
-    transcript: '', relatedTo: [], pinned: false
+    transcript: '', relatedTo: [], pinned: false, isDemo: true
   });
-  ideas = [
+  const demos = [
     // Today
     mk(0, 2, 'Voice-first idea capture app',
       'A frictionless way to capture a thought the instant it sparks, before it slips away — speak it and it organizes itself.',
@@ -773,8 +861,23 @@ function seedDemoIdeas() {
       'Personal', ['film', 'video'],
       ['Same seat, different days', 'Ambient sound only', 'Color-grade toward dusk'])
   ];
-  localStorage.setItem('spark-ideas', JSON.stringify(ideas));
-  localStorage.setItem('spark-seeded', '1');
+  ideas = [...demos, ...ideas]; // demos sit alongside any real ideas
+  saveIdeas();
+}
+
+function toggleDemoIdeas() {
+  const on = document.getElementById('demo-toggle').checked;
+  localStorage.setItem('spark-demo-enabled', on ? '1' : '0');
+  if (on) {
+    seedDemoIdeas(true);
+  } else {
+    ideas = ideas.filter(i => !isDemoIdea(i));
+    saveIdeas();
+  }
+  renderInbox();
+  renderFolders();
+  updateSettingsCount();
+  showToast(on ? 'Demo ideas added' : 'Demo ideas removed');
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -785,6 +888,7 @@ function init() {
   checkApiBanner();
   loadSettings();
   updateSettingsCount();
+  setupCreateButton();
 }
 init();
 
@@ -805,6 +909,8 @@ function loadSettings() {
   const voiceOn = localStorage.getItem('spark-voice-trigger') === '1';
   document.getElementById('voice-trigger-toggle').checked = voiceOn;
   if (voiceOn) startVoiceTrigger();
+  document.getElementById('text-only-toggle').checked = isTextOnly();
+  document.getElementById('demo-toggle').checked = demoEnabled();
 }
 function checkApiBanner() {
   const banner = document.getElementById('api-banner-inbox');
@@ -1008,8 +1114,8 @@ function openIdea(id, fromScreen) {
   document.getElementById('detail-back-label').textContent =
     detailFromScreen === 'screen-folder-detail' ? 'Folder' : 'Home';
 
-  const bulletsHtml = (idea.bullets || []).map(b =>
-    `<li><div class="bullet"></div>${escHtml(b)}</li>`).join('');
+  const bulletsHtml = (idea.bullets || []).map((b, i) =>
+    `<li><div class="bullet"></div><span class="bullet-text" data-i="${i}" ondblclick="startEditBullet(this)" title="Double-tap to edit">${escHtml(b)}</span></li>`).join('');
   const tagsHtml = (idea.tags || []).map((t, i) =>
     `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}</span>`).join('');
 
@@ -1071,6 +1177,7 @@ function openIdea(id, fromScreen) {
 function togglePinCurrentIdea() {
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
+  haptic(12);
   idea.pinned = !idea.pinned;
   saveIdeas();
   renderInbox();
@@ -1108,6 +1215,7 @@ function moveCurrentIdea() {
     idea.folder || ''
   );
   if (choice === null) return; // cancelled
+  haptic(12);
   idea.folder = choice.trim();
   saveIdeas();
   renderInbox();
@@ -1160,6 +1268,34 @@ function endEdit(el, field) {
   if (field === 'tags' || field === 'folder') openIdea(currentIdeaId, detailFromScreen);
 }
 
+// Double-tap a summary bullet to edit it (empty text removes the bullet)
+function startEditBullet(el) {
+  el.contentEditable = 'true';
+  el.classList.add('editing');
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.addEventListener('blur', () => endEditBullet(el), { once: true });
+}
+
+function endEditBullet(el) {
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  const i = parseInt(el.dataset.i, 10);
+  if (!Array.isArray(idea.bullets)) idea.bullets = [];
+  const text = el.textContent.trim();
+  if (text) idea.bullets[i] = text;
+  else idea.bullets.splice(i, 1); // empty bullet → remove it
+  saveIdeas();
+  openIdea(currentIdeaId, detailFromScreen); // re-render so indices stay correct
+}
+
 function copyCurrentIdea() {
   closeMoreMenu();
   const idea = ideas.find(i => i.id === currentIdeaId);
@@ -1193,6 +1329,7 @@ function deleteCurrentIdea() {
   closeMoreMenu();
   if (!currentIdeaId) return;
   if (!confirm('Delete this idea?')) return;
+  haptic(18);
   ideas = ideas.filter(i => i.id !== currentIdeaId);
   saveIdeas();
   renderInbox();
@@ -1277,10 +1414,74 @@ function searchTag(tag) {
   }, 150);
 }
 
+// ─── Capture button: tap vs long-press (voice vs text) ──────────────────────────
+let createPressTimer = null;
+let createLongFired = false;
+const LONG_PRESS_MS = 250;
+
+function isTextOnly() { return localStorage.getItem('spark-text-only') === '1'; }
+function toggleTextOnly() {
+  const on = document.getElementById('text-only-toggle').checked;
+  localStorage.setItem('spark-text-only', on ? '1' : '0');
+  showToast(on ? 'Tap + to type, hold to talk' : 'Tap + to talk, hold to type');
+}
+
+// Short tap = primary mode; long press = the other mode. Text-only flips them.
+function capturePrimary()   { if (isTextOnly()) startTextMode(); else startRecording(); }
+function captureSecondary() { if (isTextOnly()) startRecording(); else startTextMode(); }
+
+function setupCreateButton() {
+  const btn = document.getElementById('nav-create-btn');
+  if (!btn) return;
+  const cancelTimer = () => clearTimeout(createPressTimer);
+  btn.addEventListener('pointerdown', () => {
+    createLongFired = false;
+    cancelTimer();
+    createPressTimer = setTimeout(() => {
+      createLongFired = true;
+      haptic(18); pulse(btn);
+      captureSecondary();
+    }, LONG_PRESS_MS);
+  });
+  btn.addEventListener('pointerup', () => {
+    cancelTimer();
+    if (!createLongFired) { haptic(10); pulse(btn); capturePrimary(); }
+  });
+  btn.addEventListener('pointerleave', cancelTimer);
+  btn.addEventListener('pointercancel', cancelTimer);
+}
+
+// ─── Text capture ───────────────────────────────────────────────────────────────
+function startTextMode() {
+  stopVoiceTrigger();
+  currentTranscript = '';
+  hideOverlays();
+  const ta = document.getElementById('text-input');
+  ta.value = '';
+  document.getElementById('overlay-text').classList.add('active');
+  setTimeout(() => ta.focus(), 120);
+}
+function cancelTextMode() {
+  const ta = document.getElementById('text-input');
+  ta.blur();
+  hideOverlays();
+  restartVoiceTrigger();
+}
+function saveTextIdea() {
+  const text = document.getElementById('text-input').value.trim();
+  if (!text) { showToast('Type something first'); return; }
+  document.getElementById('text-input').blur();
+  haptic(12);
+  currentTranscript = text;       // kept as the "Original transcript" via showProcessing
+  hideOverlays();
+  showProcessing();               // same AI pipeline as voice (or saveWithoutAI if no key)
+}
+
 // ─── Recording ────────────────────────────────────────────────────────────────
 let isRecording = false;
 
 function startRecording() {
+  haptic(12);
   stopVoiceTrigger();
   currentTranscript = '';
   displayAnchor = 0;
@@ -1376,6 +1577,7 @@ function resetSilenceTimer() {
 function clearSilenceTimer() { clearTimeout(silenceTimer); silenceTimer = null; }
 
 function stopRecording() {
+  haptic(12);
   isRecording = false;
   clearSilenceTimer();
   stopWaveform();
@@ -1678,6 +1880,8 @@ function showProcessingError(msg) {
 
 function saveIdea() {
   if (!pendingIdea) return;
+  haptic(14);
+  pulse(document.getElementById('save-idea-btn'));
 
   // Apply folder selection
   const selectVal = document.getElementById('folder-select').value;
