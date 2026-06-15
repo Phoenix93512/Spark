@@ -735,7 +735,7 @@
 
   <!-- UNDO DELETE PROMPT -->
   <button class="undo-toast" id="undo-toast" onclick="undoDelete()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5a9 9 0 1 1-1.2 5"/><polyline points="3 4 3 9.5 8.5 9.5"/></svg>
     Undo delete
   </button>
 
@@ -1080,6 +1080,7 @@ function onRowPointerDown(e) {
   if (e.target.closest('.idea-swipe-delete')) return; // let the button handle its own tap
   const row = e.target.closest('.idea-row');
   if (!row) return;
+  closeSwipedRows(row);          // only one delete tab open at a time
   swipeRow = row;
   swipeStartX = e.clientX; swipeStartY = e.clientY;
   swipeDX = 0; swipeActive = true; swipeLocked = false;
@@ -1138,6 +1139,8 @@ function setupSwipe() {
   // tapping anywhere outside a row closes an open swipe
   document.addEventListener('pointerdown', (e) => {
     if (!e.target.closest('.idea-row-wrap')) closeSwipedRows();
+    // any touch dismisses the undo prompt (except the prompt itself / a fresh delete)
+    if (!e.target.closest('#undo-toast') && !e.target.closest('.idea-swipe-delete')) hideUndoToast();
   });
 }
 
