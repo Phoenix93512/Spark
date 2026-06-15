@@ -101,21 +101,32 @@
   .empty-sub { font-size: 13px; color: var(--text-3); line-height: 1.5; }
 
   /* Idea rows */
+  /* Swipe-to-delete wrapper holds the red button behind the sliding row */
+  .idea-row-wrap { position: relative; overflow: hidden; margin: 0 -8px; border-radius: 6px; }
+  .idea-swipe-delete {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 84px;
+    border: none; cursor: pointer; background: #eb5757; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; font-family: var(--font); font-size: 11px; font-weight: 500;
+  }
+  .idea-swipe-delete svg { width: 18px; height: 18px; }
   .idea-row {
-    position: relative;
+    position: relative; z-index: 1; background: var(--bg);
     display: flex; align-items: flex-start; gap: 14px;
-    cursor: pointer;
-    transition: background 0.1s; border-radius: 6px;
-    margin: 0 -8px; padding: 17px 8px;
+    cursor: pointer; border-radius: 6px;
+    padding: 17px 8px; transition: transform 0.2s ease, background 0.1s;
+    touch-action: pan-y;
   }
   .idea-row:hover { background: var(--bg-2); }
+  .idea-row.swiped { transform: translateX(-84px); }
   /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
   .idea-row::after {
     content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
     width: 85%; height: 2px; border-radius: 2px; background: rgba(60,60,67,0.09);
   }
-  .idea-row:last-child::after,
-  .idea-row:has(+ .section-label)::after { display: none; }
+  .idea-row.swiped::after { display: none; }
+  .idea-row-wrap:last-child .idea-row::after,
+  .idea-row-wrap:has(+ .section-label) .idea-row::after { display: none; }
   .idea-body { flex: 1; min-width: 0; }
   .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.2px; }
   .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -889,6 +900,7 @@ function init() {
   loadSettings();
   updateSettingsCount();
   setupCreateButton();
+  setupSwipe();
 }
 init();
 
@@ -1014,22 +1026,119 @@ function showAllIdeasScreen() {
   showNavScreen('screen-folders');
 }
 
-function ideaRowHTML(idea, now, clickFn) {
+function ideaRowHTML(idea, now, fromScreen) {
   const tags = (idea.tags || []).slice(0, 2);
   const firstTag = tags[0] || '';
   const timeStr = timeAgo(idea.createdAt);
-  const fn = clickFn || `openIdea('${idea.id}', '${activeNavScreen}')`;
-  return `<div class="idea-row" onclick="${fn}">
-    <div class="idea-body">
-      <div class="idea-title">${escHtml(idea.title)}</div>
-      <div class="idea-desc">${escHtml(idea.description)}</div>
-      <div class="idea-meta">
-        ${firstTag ? `<span class="tag orange">${escHtml(firstTag)}</span>` : ''}
-        ${tags.slice(1).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
-        <span class="idea-time">${timeStr}</span>
+  const from = fromScreen || activeNavScreen;
+  return `<div class="idea-row-wrap" data-id="${idea.id}" data-from="${from}">
+    <button class="idea-swipe-delete" aria-label="Delete" onclick="deleteIdeaById('${idea.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      Delete
+    </button>
+    <div class="idea-row">
+      <div class="idea-body">
+        <div class="idea-title">${escHtml(idea.title)}</div>
+        <div class="idea-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta">
+          ${firstTag ? `<span class="tag orange">${escHtml(firstTag)}</span>` : ''}
+          ${tags.slice(1).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">${timeStr}</span>
+        </div>
       </div>
     </div>
   </div>`;
+}
+
+// ─── Swipe-left to delete on idea rows ──────────────────────────────────────────
+let swipeRow = null, swipeStartX = 0, swipeStartY = 0, swipeDX = 0, swipeActive = false, swipeLocked = false;
+const SWIPE_OPEN = 84, SWIPE_TRIGGER = 42, SWIPE_TAP = 8, SWIPE_LOCK = 10;
+
+function closeSwipedRows(except) {
+  document.querySelectorAll('.idea-row.swiped').forEach(r => { if (r !== except) r.classList.remove('swiped'); });
+}
+
+function onRowPointerDown(e) {
+  if (e.target.closest('.idea-swipe-delete')) return; // let the button handle its own tap
+  const row = e.target.closest('.idea-row');
+  if (!row) return;
+  swipeRow = row;
+  swipeStartX = e.clientX; swipeStartY = e.clientY;
+  swipeDX = 0; swipeActive = true; swipeLocked = false;
+}
+
+function onRowPointerMove(e) {
+  if (!swipeActive || !swipeRow) return;
+  const dx = e.clientX - swipeStartX;
+  const dy = e.clientY - swipeStartY;
+  if (!swipeLocked) {
+    if (Math.abs(dx) > SWIPE_LOCK && Math.abs(dx) > Math.abs(dy)) {
+      swipeLocked = true;            // committed to a horizontal swipe
+    } else if (Math.abs(dy) > SWIPE_LOCK) {
+      swipeActive = false; swipeRow = null; return; // it's a vertical scroll — let it go
+    } else { return; }
+  }
+  const base = swipeRow.classList.contains('swiped') ? -SWIPE_OPEN : 0;
+  let t = Math.max(-SWIPE_OPEN, Math.min(0, base + dx));
+  swipeDX = dx;
+  swipeRow.style.transition = 'none';
+  swipeRow.style.transform = `translateX(${t}px)`;
+  e.preventDefault();
+}
+
+function onRowPointerUp() {
+  if (!swipeRow) return;
+  const row = swipeRow;
+  row.style.transition = '';
+  row.style.transform = '';
+  const wasOpen = row.classList.contains('swiped');
+  if (swipeLocked) {
+    const finalT = (wasOpen ? -SWIPE_OPEN : 0) + swipeDX;
+    if (finalT <= -SWIPE_TRIGGER) { row.classList.add('swiped'); haptic(12); }
+    else { row.classList.remove('swiped'); }
+  } else if (Math.abs(swipeDX) < SWIPE_TAP) {
+    // a tap: if any row is open, just close it; otherwise open the idea
+    if (document.querySelector('.idea-row.swiped')) {
+      closeSwipedRows();
+    } else {
+      const wrap = row.closest('.idea-row-wrap');
+      if (wrap) openIdea(wrap.dataset.id, wrap.dataset.from);
+    }
+  }
+  swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
+}
+
+function setupSwipe() {
+  ['inbox-content', 'folder-detail-content', 'search-content'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('pointerdown', onRowPointerDown);
+    el.addEventListener('pointermove', onRowPointerMove);
+    el.addEventListener('pointerup', onRowPointerUp);
+    el.addEventListener('pointercancel', onRowPointerUp);
+  });
+  // tapping anywhere outside a row closes an open swipe
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.idea-row-wrap')) closeSwipedRows();
+  });
+}
+
+function deleteIdeaById(id) {
+  haptic(18);
+  ideas = ideas.filter(i => i.id !== id);
+  saveIdeas();
+  renderInbox();
+  renderFolders();
+  // refresh whichever list is currently visible
+  if (document.getElementById('screen-folder-detail').classList.contains('active') && currentFolderView !== undefined) {
+    renderFoldersScreen(document.getElementById('folder-detail-content'), currentFolderView, currentFolderLabel);
+  }
+  if (document.getElementById('screen-search').classList.contains('active')) {
+    const q = document.getElementById('search-input').value.trim();
+    if (q) runSearch(q);
+  }
+  updateSettingsCount();
+  showToast('Idea deleted');
 }
 
 // ─── Folders ──────────────────────────────────────────────────────────────────
@@ -1091,10 +1200,13 @@ function getFolders() {
   return [...seen].sort();
 }
 
+let currentFolderView = undefined, currentFolderLabel = '';
 function openFolderDetail(folder, label) {
   const container = document.getElementById('folder-detail-content');
   const filterFolder = folder === '__all__' ? null : folder;
-  renderFoldersScreen(container, filterFolder === null ? '' : filterFolder, label);
+  currentFolderView = filterFolder === null ? '' : filterFolder;
+  currentFolderLabel = label;
+  renderFoldersScreen(container, currentFolderView, label);
   const btn = document.querySelector('#screen-folder-detail .back-btn span') || document.querySelector('#screen-folder-detail .back-btn');
   document.querySelector('#screen-folder-detail .topbar').innerHTML = `
     <button class="back-btn" onclick="showNavScreen('screen-folders')">
@@ -1401,7 +1513,7 @@ function renderSearchResults(results) {
   }
   const now = Date.now();
   let html = `<div class="section-label">${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
-  results.forEach(idea => { html += ideaRowHTML(idea, now, `openIdea('${idea.id}', 'screen-inbox')`); });
+  results.forEach(idea => { html += ideaRowHTML(idea, now, 'screen-inbox'); });
   container.innerHTML = html;
 }
 
