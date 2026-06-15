@@ -104,21 +104,34 @@
   /* Swipe-to-delete wrapper holds the red button behind the sliding row */
   .idea-row-wrap { position: relative; overflow: hidden; margin: 0 -8px; border-radius: 6px; }
   .idea-swipe-delete {
-    position: absolute; top: 0; right: 0; bottom: 0; width: 84px;
+    position: absolute; top: 0; right: 0; bottom: 0; width: 124px;
     border: none; cursor: pointer; background: #eb5757; color: #fff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 4px; font-family: var(--font); font-size: 11px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
   }
-  .idea-swipe-delete svg { width: 18px; height: 18px; }
+  .idea-swipe-delete svg { width: 32px; height: 32px; }
+  .undo-toast {
+    position: absolute; bottom: calc(var(--nav-h) + 16px); left: 50%;
+    transform: translateX(-50%) translateY(12px); z-index: 40;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--text); color: #fff; border: none;
+    padding: 11px 18px; border-radius: 22px; cursor: pointer;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .undo-toast svg { width: 17px; height: 17px; }
+  .undo-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
   .idea-row {
     position: relative; z-index: 1; background: var(--bg);
     display: flex; align-items: flex-start; gap: 14px;
     cursor: pointer; border-radius: 6px;
-    padding: 17px 8px; transition: transform 0.2s ease, background 0.1s;
+    padding: 17px 8px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s;
     touch-action: pan-y;
   }
   .idea-row:hover { background: var(--bg-2); }
-  .idea-row.swiped { transform: translateX(-84px); }
+  .idea-row.swiped { transform: translateX(-124px); }
   /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
   .idea-row::after {
     content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
@@ -720,6 +733,12 @@
     </button>
   </nav>
 
+  <!-- UNDO DELETE PROMPT -->
+  <button class="undo-toast" id="undo-toast" onclick="undoDelete()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/></svg>
+    Undo delete
+  </button>
+
   <!-- RECORDING OVERLAY -->
   <div class="overlay" id="overlay-recording">
     <div class="rec-top">
@@ -1034,7 +1053,6 @@ function ideaRowHTML(idea, now, fromScreen) {
   return `<div class="idea-row-wrap" data-id="${idea.id}" data-from="${from}">
     <button class="idea-swipe-delete" aria-label="Delete" onclick="deleteIdeaById('${idea.id}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-      Delete
     </button>
     <div class="idea-row">
       <div class="idea-body">
@@ -1052,7 +1070,7 @@ function ideaRowHTML(idea, now, fromScreen) {
 
 // ─── Swipe-left to delete on idea rows ──────────────────────────────────────────
 let swipeRow = null, swipeStartX = 0, swipeStartY = 0, swipeDX = 0, swipeActive = false, swipeLocked = false;
-const SWIPE_OPEN = 84, SWIPE_TRIGGER = 42, SWIPE_TAP = 8, SWIPE_LOCK = 10;
+const SWIPE_OPEN = 124, SWIPE_TRIGGER = 60, SWIPE_TAP = 8, SWIPE_LOCK = 10;
 
 function closeSwipedRows(except) {
   document.querySelectorAll('.idea-row.swiped').forEach(r => { if (r !== except) r.classList.remove('swiped'); });
@@ -1123,10 +1141,7 @@ function setupSwipe() {
   });
 }
 
-function deleteIdeaById(id) {
-  haptic(18);
-  ideas = ideas.filter(i => i.id !== id);
-  saveIdeas();
+function refreshVisibleList() {
   renderInbox();
   renderFolders();
   // refresh whichever list is currently visible
@@ -1138,7 +1153,44 @@ function deleteIdeaById(id) {
     if (q) runSearch(q);
   }
   updateSettingsCount();
-  showToast('Idea deleted');
+}
+
+let lastDeleted = null, undoTimer = null;
+
+function deleteIdeaById(id) {
+  haptic(18);
+  const index = ideas.findIndex(i => i.id === id);
+  if (index === -1) return;
+  lastDeleted = { idea: ideas[index], index };
+  ideas = ideas.filter(i => i.id !== id);
+  saveIdeas();
+  refreshVisibleList();
+  showUndoToast();
+}
+
+function undoDelete() {
+  if (!lastDeleted) return;
+  haptic(12);
+  const { idea, index } = lastDeleted;
+  ideas.splice(Math.min(index, ideas.length), 0, idea);
+  lastDeleted = null;
+  saveIdeas();
+  refreshVisibleList();
+  hideUndoToast();
+}
+
+function showUndoToast() {
+  const el = document.getElementById('undo-toast');
+  if (!el) return;
+  el.classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndoToast, 4000);
+}
+
+function hideUndoToast() {
+  const el = document.getElementById('undo-toast');
+  if (el) el.classList.remove('show');
+  clearTimeout(undoTimer);
 }
 
 // ─── Folders ──────────────────────────────────────────────────────────────────
