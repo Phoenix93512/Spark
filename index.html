@@ -426,36 +426,47 @@
   }
   .overlay.active { display: flex; }
 
-  #overlay-recording { justify-content: flex-start; gap: 0; padding: max(56px, calc(env(safe-area-inset-top) + 24px)) 28px 52px; }
-  .rec-top { display: flex; flex-direction: column; align-items: center; gap: 14px; flex-shrink: 0; }
-  .rec-transcript {
-    flex: 1; width: 100%; display: flex; align-items: center; justify-content: center;
-    text-align: center; font-size: 26px; line-height: 1.45; color: var(--text);
-    font-weight: 400; overflow-y: auto; padding: 28px 4px; letter-spacing: -0.3px;
-    transition: opacity 0.8s ease-out;
+  #overlay-recording { background: #0D0D0D; justify-content: flex-start; gap: 0; padding: 0; }
+  .rec-nav {
+    width: 100%; display: flex; align-items: center; position: relative;
+    padding: max(52px, calc(env(safe-area-inset-top) + 16px)) 20px 0;
   }
-  .rec-transcript::-webkit-scrollbar { display: none; }
-  .rec-transcript.placeholder { color: var(--text-3); font-size: 16px; }
-  .rec-transcript.faded { opacity: 0; }
-  .rec-time { font-size: 19px; font-weight: 400; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: 0; }
-  .rec-waveform { display: flex; gap: 4px; align-items: center; height: 44px; }
-  .wave-bar { width: 4px; border-radius: 2px; background: var(--orange); height: 6px; animation: wave 0.9s ease-in-out infinite; transition: height 0.07s linear; }
-  .wave-bar:nth-child(1){animation-delay:0s} .wave-bar:nth-child(2){animation-delay:.12s}
-  .wave-bar:nth-child(3){animation-delay:.24s} .wave-bar:nth-child(4){animation-delay:.36s}
-  .wave-bar:nth-child(5){animation-delay:.24s} .wave-bar:nth-child(6){animation-delay:.12s}
-  .wave-bar:nth-child(7){animation-delay:0s}
-  .rec-waveform.reactive .wave-bar { animation: none; }
-  @keyframes wave { 0%,100%{height:6px} 50%{height:28px} }
+  .rec-cancel-btn {
+    border: none; background: none; cursor: pointer; padding: 8px 0;
+    font-family: var(--font); font-size: 15px; color: rgba(255,255,255,0.45);
+    display: flex; align-items: center; gap: 3px; transition: color 0.15s;
+  }
+  .rec-cancel-btn:hover { color: rgba(255,255,255,0.8); }
+  .rec-cancel-btn svg { width: 16px; height: 16px; }
+  .rec-screen-title {
+    font-size: 17px; font-weight: 500; color: rgba(255,255,255,0.75);
+    position: absolute; left: 50%; transform: translateX(-50%);
+  }
+  .rec-indicator-row { display: flex; align-items: center; gap: 7px; margin-top: 32px; }
+  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #F46B0E; animation: rec-blink 1.4s ease-in-out infinite; }
+  @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.12} }
+  .rec-indicator-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.38); }
+  .rec-time { font-size: 56px; font-weight: 300; color: #fff; letter-spacing: -2px; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .rec-waveform { display: flex; align-items: flex-end; justify-content: center; gap: 7px; height: 130px; margin: 36px 0 28px; flex-shrink: 0; }
+  .wave-bar { width: 10px; border-radius: 5px; background: #F46B0E; height: 8px; flex-shrink: 0; }
+  .rec-hint-text { font-size: 14px; color: rgba(255,255,255,0.24); text-align: center; padding: 0 48px; line-height: 1.5; }
+  .rec-error-dark {
+    display: none; width: calc(100% - 48px); background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,80,80,0.3); border-radius: 8px;
+    padding: 11px 14px; font-size: 12px; color: rgba(255,100,100,0.85);
+    line-height: 1.5; margin-top: 16px;
+  }
+  .rec-error-dark.show { display: block; }
   .rec-stop {
-    width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
-    border: 2px solid var(--orange); background: var(--orange);
+    width: 70px; height: 70px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(255,255,255,0.09); border: 1.5px solid rgba(255,255,255,0.14);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: transform 0.12s, background 0.15s;
-    box-shadow: 0 4px 20px rgba(244,107,14,0.35);
+    margin-top: auto; margin-bottom: calc(48px + env(safe-area-inset-bottom));
   }
-  .rec-stop:hover { transform: scale(1.05); }
-  .rec-stop:active { transform: scale(0.96); }
-  .rec-stop-inner { width: 24px; height: 24px; border-radius: 5px; background: white; }
+  .rec-stop:hover { background: rgba(255,255,255,0.16); }
+  .rec-stop:active { transform: scale(0.94); }
+  .rec-stop-inner { width: 25px; height: 25px; border-radius: 5px; background: #fff; }
 
   /* Text-capture overlay */
   #overlay-text {
@@ -844,15 +855,24 @@
 
   <!-- RECORDING OVERLAY -->
   <div class="overlay" id="overlay-recording">
-    <div class="rec-top">
-      <div class="rec-waveform" id="rec-waveform">
-        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-      </div>
+    <div class="rec-nav">
+      <button class="rec-cancel-btn" onclick="cancelRecording()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Cancel
+      </button>
+      <span class="rec-screen-title">New Idea</span>
     </div>
-    <div class="rec-transcript placeholder" id="rec-hint">tap lightbulb to start</div>
-    <div class="error-box" id="rec-error"></div>
+    <div class="rec-indicator-row">
+      <div class="rec-dot" id="rec-dot"></div>
+      <span class="rec-indicator-label">Recording</span>
+    </div>
+    <div class="rec-time" id="rec-time">0:00</div>
+    <div class="rec-waveform" id="rec-waveform">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div>
+    </div>
+    <div class="rec-hint-text">Speak naturally — AI will transcribe when done</div>
+    <div class="rec-error-dark" id="rec-error"></div>
     <button class="rec-stop" id="rec-stop-btn" onclick="stopRecording()">
       <div class="rec-stop-inner"></div>
     </button>
@@ -921,12 +941,14 @@
 // ─── State ────────────────────────────────────────────────────────────────────
 let ideas = JSON.parse(localStorage.getItem('spark-ideas') || '[]');
 let currentTranscript = '';
-let displayAnchor = 0; // chars into currentTranscript; words before this aren't shown on screen
 let pendingIdea = null;
 let currentIdeaId = null;
 let detailFromScreen = 'screen-inbox';
-let recognition = null;
 let triggerRecognition = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recTimerInterval = null;
+let recSeconds = 0;
 let activeNavScreen = 'screen-inbox';
 let collapsedSections = new Set();
 let currentSaveMode = 'summary';
@@ -1884,171 +1906,185 @@ function saveTextIdea() {
   showProcessing();               // same AI pipeline as voice (or saveWithoutAI if no key)
 }
 
-// ─── Recording ────────────────────────────────────────────────────────────────
+// ─── Recording (MediaRecorder + Gemini audio) ────────────────────────────────
 let isRecording = false;
 
-function startRecording() {
+async function startRecording() {
   haptic(12);
   stopVoiceTrigger();
   currentTranscript = '';
-  displayAnchor = 0;
+  audioChunks = [];
+  recSeconds = 0;
   isRecording = true;
   document.getElementById('rec-error').classList.remove('show');
-  const hint = document.getElementById('rec-hint');
-  hint.textContent = 'listening...';
-  hint.classList.add('placeholder');
-  hint.classList.remove('faded');
-  document.getElementById('rec-waveform').style.opacity = '1';
+  document.getElementById('rec-time').textContent = '0:00';
   hideOverlays();
   document.getElementById('overlay-recording').classList.add('active');
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    showRecError('Speech recognition not supported. Use Chrome or Safari.');
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    showRecError('Microphone access denied. Check browser permissions and try again.');
     return;
   }
-  startWaveform();
-  startRecognitionInstance(SpeechRecognition);
+
+  micStream = stream;
+  startWaveform(stream);
+
+  recTimerInterval = setInterval(() => {
+    recSeconds++;
+    const el = document.getElementById('rec-time');
+    if (el) el.textContent = Math.floor(recSeconds / 60) + ':' + String(recSeconds % 60).padStart(2, '0');
+  }, 1000);
+
+  const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4',''].find(t => !t || MediaRecorder.isTypeSupported(t));
+  mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
+  mediaRecorder.start(250);
 }
 
-function startRecognitionInstance(SpeechRecognition) {
+async function stopRecording() {
   if (!isRecording) return;
-  // Always get the constructor — passed on first call, looked up on restart
-  const SR = SpeechRecognition || window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  recognition = new SR();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-  recognition.maxAlternatives = 1;
-
-  recognition.onresult = (e) => {
-    let interim = '', finalChunk = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalChunk += e.results[i][0].transcript + ' ';
-      else interim += e.results[i][0].transcript;
-    }
-    if (finalChunk) currentTranscript = (currentTranscript + ' ' + finalChunk).trim();
-    const hint = document.getElementById('rec-hint');
-    // Only show words spoken since the last pause — after silence we start fresh from the new word
-    const sincePause = (currentTranscript.slice(displayAnchor) + ' ' + interim).trim();
-    if (sincePause) {
-      // Show only the last few words — calm, ambient feedback
-      const tail = sincePause.split(/\s+/).slice(-5).join(' ');
-      hint.textContent = tail;
-      hint.classList.remove('placeholder');
-      hint.classList.remove('faded'); // speech detected → bring text back
-      resetSilenceTimer();
-    } else {
-      hint.textContent = 'listening...';
-      hint.classList.add('placeholder');
-    }
-  };
-
-  recognition.onerror = (e) => {
-    if (e.error === 'not-allowed') {
-      showRecError('Microphone access denied. Check browser permissions and try again.');
-    } else if (e.error === 'audio-capture') {
-      showRecError('No microphone found. Plug one in and try again.');
-    } else if (e.error === 'network') {
-      showRecError('Network error — speech recognition needs internet on Chrome.');
-    }
-    // 'no-speech' and 'aborted' are normal — onend will restart
-  };
-
-  recognition.onend = () => {
-    // Create a fresh instance — restarting the same object is unreliable
-    if (isRecording) setTimeout(() => startRecognitionInstance(), 150);
-  };
-
-  try {
-    recognition.start();
-  } catch(e) {
-    // Already started — wait and retry
-    setTimeout(() => startRecognitionInstance(), 300);
-  }
-}
-
-// Fade the on-screen words out after a short pause in speech
-let silenceTimer = null;
-function resetSilenceTimer() {
-  clearTimeout(silenceTimer);
-  silenceTimer = setTimeout(() => {
-    const hint = document.getElementById('rec-hint');
-    if (hint && !hint.classList.contains('placeholder')) {
-      hint.classList.add('faded');
-      displayAnchor = currentTranscript.length; // next words shown fresh, not appended to the faded sentence
-    }
-  }, 800);
-}
-function clearSilenceTimer() { clearTimeout(silenceTimer); silenceTimer = null; }
-
-function stopRecording() {
   haptic(12);
   isRecording = false;
-  clearSilenceTimer();
+  clearInterval(recTimerInterval); recTimerInterval = null;
   stopWaveform();
-  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+
+  if (!mediaRecorder || audioChunks.length === 0) {
+    hideOverlays();
+    showToast('No audio recorded — try again');
+    restartVoiceTrigger();
+    return;
+  }
+
+  // Switch to processing overlay (loading state) immediately
   hideOverlays();
-  if (!currentTranscript.trim()) { showToast('No speech detected — try again'); restartVoiceTrigger(); return; }
-  showProcessing();
+  document.getElementById('processing-status').innerHTML = '';
+  document.getElementById('processing-error').classList.remove('show');
+  document.getElementById('result-preview').classList.remove('show');
+  document.getElementById('folder-picker').classList.remove('show');
+  document.getElementById('save-idea-btn').disabled = true;
+  document.getElementById('transcript-toggle').classList.remove('show', 'open');
+  document.getElementById('transcript-wrap').classList.remove('show');
+  document.getElementById('mode-picker-wrap').style.display = 'none';
+  pendingIdea = null;
+  currentSaveMode = getGlobalMode();
+  document.getElementById('overlay-processing').classList.add('active');
+  showLoadingQuote();
+
+  // Collect final audio chunks
+  await new Promise(resolve => { mediaRecorder.onstop = resolve; mediaRecorder.stop(); });
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+
+  const mimeType = mediaRecorder.mimeType || 'audio/webm';
+  const audioBlob = new Blob(audioChunks, { type: mimeType });
+  audioChunks = [];
+  mediaRecorder = null;
+
+  if (audioBlob.size < 500) {
+    hideOverlays();
+    showToast('Recording too short — try again');
+    restartVoiceTrigger();
+    return;
+  }
+
+  const key = getApiKey();
+  if (!key) { currentTranscript = ''; saveWithoutAI(); return; }
+
+  try {
+    currentTranscript = await transcribeWithGemini(audioBlob, key);
+    document.getElementById('processing-transcript').textContent = currentTranscript;
+  } catch(e) {
+    showProcessingError('Transcription failed: ' + e.message);
+    return;
+  }
+
+  callGemini(currentTranscript, key);
 }
 
 function cancelRecording() {
   isRecording = false;
-  clearSilenceTimer();
+  clearInterval(recTimerInterval); recTimerInterval = null;
   stopWaveform();
-  if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') { try { mediaRecorder.stop(); } catch(e) {} }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  audioChunks = [];
+  mediaRecorder = null;
   hideOverlays();
   restartVoiceTrigger();
 }
 
 function showRecError(msg) {
-  clearSilenceTimer();
   stopWaveform();
   document.getElementById('rec-error').textContent = msg;
   document.getElementById('rec-error').classList.add('show');
-  document.getElementById('rec-waveform').style.opacity = '0.2';
-  document.getElementById('rec-hint').textContent = '';
+  document.querySelectorAll('#rec-waveform .wave-bar').forEach(b => b.style.opacity = '0.2');
+}
+
+// ─── Gemini audio transcription ───────────────────────────────────────────────
+async function transcribeWithGemini(audioBlob, apiKey) {
+  const base64 = await blobToBase64(audioBlob);
+  const mime = audioBlob.type || 'audio/webm';
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [
+        { inline_data: { mime_type: mime, data: base64 } },
+        { text: 'Transcribe this voice recording accurately. Return only the spoken words, no timestamps, no labels, no commentary.' }
+      ]}]})
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 // ─── Voice-reactive waveform (Web Audio API) ──────────────────────────────────
 let audioCtx = null, analyser = null, micStream = null, waveRAF = null;
-async function startWaveform() {
+function startWaveform(stream) {
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioCtx.createMediaStreamSource(micStream);
+    const source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 64;
-    analyser.smoothingTimeConstant = 0.75;
+    analyser.fftSize = 128;
+    analyser.smoothingTimeConstant = 0.78;
     source.connect(analyser);
     const bars = document.querySelectorAll('#rec-waveform .wave-bar');
-    document.getElementById('rec-waveform').classList.add('reactive');
     const data = new Uint8Array(analyser.frequencyBinCount);
     const tick = () => {
+      if (!analyser) return;
       analyser.getByteFrequencyData(data);
       bars.forEach((bar, i) => {
-        // Spread bars across low→high frequency bins for a symmetric look
-        const idx = 2 + i * 3;
+        const idx = Math.round(1 + i * (data.length * 0.4 / (bars.length - 1)));
         const v = (data[idx] || 0) / 255;
-        bar.style.height = (6 + v * 32) + 'px';
+        bar.style.height = Math.round(8 + v * 122) + 'px';
+        bar.style.boxShadow = `0 0 ${Math.round(v * 18)}px rgba(244,107,14,${(v * 0.68).toFixed(2)})`;
       });
       waveRAF = requestAnimationFrame(tick);
     };
     tick();
-  } catch(e) {
-    // Mic blocked or unavailable — fall back to the CSS animation (no reactive class)
-  }
+  } catch(e) {}
 }
 function stopWaveform() {
   if (waveRAF) { cancelAnimationFrame(waveRAF); waveRAF = null; }
-  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   if (audioCtx) { try { audioCtx.close(); } catch(e) {} audioCtx = null; }
   analyser = null;
-  const wf = document.getElementById('rec-waveform');
-  wf.classList.remove('reactive');
-  wf.querySelectorAll('.wave-bar').forEach(b => b.style.height = '');
+  document.querySelectorAll('#rec-waveform .wave-bar').forEach(b => { b.style.height = '8px'; b.style.boxShadow = ''; });
 }
 
 // ─── Framing mode ────────────────────────────────────────────────────────────
