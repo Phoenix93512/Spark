@@ -85,11 +85,94 @@
   .section-label {
     font-size: 13px; font-weight: 600; color: var(--text-2);
     letter-spacing: 0.02em; text-transform: uppercase; padding: 26px 0 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
   }
   .section-label.today {
     font-size: 22px; font-weight: 700; color: var(--text);
     letter-spacing: -0.3px; text-transform: none;
+    cursor: default;
   }
+  .section-chevron { width: 14px; height: 14px; color: var(--text-3); transition: transform 0.2s; flex-shrink: 0; }
+  .section-label.collapsed .section-chevron { transform: rotate(-90deg); }
+
+  /* Peek preview overlay */
+  .peek-overlay {
+    position: absolute; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.28); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.12s;
+  }
+  .peek-overlay.show { opacity: 1; pointer-events: auto; }
+  .peek-card {
+    background: var(--bg); border-radius: 18px; padding: 20px 20px 18px;
+    max-width: calc(100% - 48px); width: 320px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .peek-title { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; line-height: 1.25; }
+  .peek-desc { font-size: 14px; color: var(--text-2); line-height: 1.4; }
+  .peek-bullets { display: flex; flex-direction: column; gap: 7px; }
+  .peek-bullet-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-2); line-height: 1.4; }
+  .peek-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); flex-shrink: 0; margin-top: 7px; }
+
+  /* Move folder dropdown */
+  .move-folder-menu {
+    position: absolute; top: 38px; right: 0; min-width: 220px; max-width: 280px;
+    background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+    padding: 6px; z-index: 31; display: none; flex-direction: column;
+    transform-origin: top right; max-height: 320px; overflow-y: auto;
+  }
+  .move-folder-menu.open { display: flex; animation: menu-pop 0.12s ease-out; }
+  .move-folder-menu::-webkit-scrollbar { display: none; }
+  .move-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    border: none; background: none; cursor: pointer; border-radius: 9px;
+    padding: 10px 12px; font-family: var(--font); font-size: 15px;
+    color: var(--text); text-align: left;
+  }
+  .move-item:hover { background: var(--bg-2); }
+  .move-item svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-3); }
+  .move-item.active { color: var(--orange); }
+  .move-item.active svg { color: var(--orange); }
+  .move-item.add-folder { color: var(--orange); font-weight: 500; }
+  .move-item.add-folder svg { color: var(--orange); }
+  .move-check { margin-left: auto; flex-shrink: 0; }
+  .move-menu-divider { height: 1px; background: var(--border); margin: 4px 6px; flex-shrink: 0; }
+  .move-section-hdr { font-size: 11px; color: var(--text-3); letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 12px 2px; }
+  .move-folder-input {
+    display: none; margin: 2px 8px 6px; padding: 8px 10px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px;
+    font-family: var(--font); font-size: 13px; color: var(--text);
+    background: var(--bg); outline: none;
+  }
+  .move-folder-input:focus { border-color: var(--orange); }
+  .move-folder-input.show { display: block; }
+
+  /* Search slide-in */
+  @keyframes search-slide-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #screen-search.active { animation: search-slide-in 0.18s ease-out; }
+
+  /* Mode picker (segment control) */
+  .mode-picker { display: flex; width: 100%; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border-strong); flex-shrink: 0; }
+  .mode-btn {
+    flex: 1; padding: 9px 4px; border: none; background: none; cursor: pointer;
+    font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--text-2);
+    text-align: center; line-height: 1.3;
+    border-right: 1px solid var(--border-strong); transition: background 0.15s, color 0.15s;
+  }
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn.active { background: var(--orange); color: #fff; }
+  .mode-btn:not(.active):hover { background: var(--bg-2); }
+
+  /* Problems / Solutions / Questions bullets in detail */
+  .prob-bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); margin-top: 9px; flex-shrink: 0; }
+  .sol-bullet  { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); margin-top: 9px; flex-shrink: 0; }
+  .q-bullet    { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); margin-top: 9px; flex-shrink: 0; }
 
   /* Empty state */
   .empty-state {
@@ -135,7 +218,7 @@
   /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
   .idea-row::after {
     content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-    width: 85%; height: 2px; border-radius: 2px; background: rgba(60,60,67,0.09);
+    width: 90%; height: 2px; border-radius: 2px; background: rgba(60,60,67,0.09);
   }
   .idea-row.swiped::after { display: none; }
   .idea-row-wrap:last-child .idea-row::after,
@@ -436,15 +519,15 @@
   .result-folder { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
   .result-folder svg { width: 12px; height: 12px; }
 
-  /* Transcript toggle + collapsible editable area */
-  .transcript-toggle {
+  /* Transcript toggle + collapsible editable area (processing overlay) */
+  .proc-transcript-toggle {
     display: none; align-items: center; gap: 6px; align-self: flex-start;
     font-size: 12px; color: var(--text-3); cursor: pointer; user-select: none;
     padding: 4px 0;
   }
-  .transcript-toggle.show { display: flex; }
-  .transcript-toggle svg { width: 13px; height: 13px; transition: transform 0.2s; }
-  .transcript-toggle.open svg { transform: rotate(90deg); }
+  .proc-transcript-toggle.show { display: flex; }
+  .proc-transcript-toggle svg { width: 13px; height: 13px; transition: transform 0.2s; }
+  .proc-transcript-toggle.open svg { transform: rotate(90deg); }
   .transcript-wrap { width: 100%; display: none; flex-direction: column; gap: 4px; }
   .transcript-wrap.show { display: flex; }
   .processing-transcript {
@@ -661,6 +744,20 @@
         </div>
       </div>
       <div class="settings-section">
+        <div class="settings-label">Framing</div>
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Default idea format</div>
+            <div class="settings-row-sub">How AI structures your saved ideas. Can be changed per-idea at save time.</div>
+          </div>
+          <div class="mode-picker" style="width:100%;">
+            <button class="mode-btn" id="settings-mode-summary"    onclick="setGlobalMode('summary')">Summary</button>
+            <button class="mode-btn" id="settings-mode-problems"   onclick="setGlobalMode('problems')">Problems</button>
+            <button class="mode-btn" id="settings-mode-questions"  onclick="setGlobalMode('questions')">Questions</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
         <div class="settings-label">Data</div>
         <div class="settings-row">
           <div class="settings-row-info">
@@ -713,6 +810,7 @@
             <span>Delete</span>
           </button>
         </div>
+        <div class="move-folder-menu" id="move-folder-menu"></div>
       </div>
     </div>
     <div class="content" id="detail-content" style="padding-top:8px; padding-bottom:40px;"></div>
@@ -732,6 +830,11 @@
       Folders
     </button>
   </nav>
+
+  <!-- PEEK PREVIEW OVERLAY -->
+  <div class="peek-overlay" id="peek-overlay">
+    <div class="peek-card" id="peek-card"></div>
+  </div>
 
   <!-- UNDO DELETE PROMPT -->
   <button class="undo-toast" id="undo-toast" onclick="undoDelete()">
@@ -788,7 +891,15 @@
         </select>
         <input class="folder-new-input" id="folder-new-input" type="text" placeholder="Folder name..." maxlength="30">
       </div>
-      <div class="transcript-toggle" id="transcript-toggle" onclick="toggleReviewTranscript()">
+      <div class="mode-picker-wrap" id="mode-picker-wrap" style="display:none; flex-direction:column; gap:6px; width:100%; flex-shrink:0;">
+        <div style="font-size:11px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-3);">Frame as</div>
+        <div class="mode-picker">
+          <button class="mode-btn" id="mode-btn-summary"    onclick="setSaveMode('summary')">Summary</button>
+          <button class="mode-btn" id="mode-btn-problems"   onclick="setSaveMode('problems')">Problems</button>
+          <button class="mode-btn" id="mode-btn-questions"  onclick="setSaveMode('questions')">Questions</button>
+        </div>
+      </div>
+      <div class="proc-transcript-toggle" id="transcript-toggle" onclick="toggleReviewTranscript()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
         <span id="transcript-toggle-label">Show original transcript</span>
       </div>
@@ -817,6 +928,10 @@ let detailFromScreen = 'screen-inbox';
 let recognition = null;
 let triggerRecognition = null;
 let activeNavScreen = 'screen-inbox';
+let collapsedSections = new Set();
+let currentSaveMode = 'summary';
+let peekShowing = false;
+let peekHoldTimer = null;
 
 // ─── Feedback: best-effort vibrate (no-op on iOS) + tiny orange pulse ────────────
 function haptic(ms = 10) {
@@ -987,15 +1102,27 @@ function goBackFromDetail() {
   showNavScreen(detailFromScreen === 'screen-folder-detail' ? 'screen-folder-detail' : 'screen-inbox');
 }
 
+// ─── Collapsible section helpers ──────────────────────────────────────────────
+function toggleSection(name) {
+  if (collapsedSections.has(name)) collapsedSections.delete(name);
+  else collapsedSections.add(name);
+  renderInbox();
+}
+function collapsibleLabel(name) {
+  const c = collapsedSections.has(name);
+  return `<div class="section-label${c ? ' collapsed' : ''}" onclick="toggleSection('${name}')">
+    <span>${name}</span>
+    <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"/></svg>
+  </div>`;
+}
+
 // ─── Render inbox ─────────────────────────────────────────────────────────────
 function renderInbox() {
   const container = document.getElementById('inbox-content');
   if (ideas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">
-          <img src="icon2.png" alt="Spark" width="44" height="44">
-        </div>
+        <div class="empty-icon"><img src="icon2.png" alt="Spark" width="44" height="44"></div>
         <div class="empty-title">No ideas yet</div>
         <div class="empty-sub">Tap the lightbulb to capture your first idea</div>
       </div>`;
@@ -1007,24 +1134,24 @@ function renderInbox() {
   const buckets = { 'Today': [], 'This Week': [], 'This Month': [] };
   rest.forEach(idea => {
     const b = dateBucket(idea.createdAt);
-    if (b) buckets[b].push(idea); // older ideas (null) stay off Home
+    if (b) buckets[b].push(idea);
   });
   let html = '';
   if (pinned.length) {
-    html += `<div class="section-label">Pinned</div>`;
-    pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
+    html += collapsibleLabel('Pinned');
+    if (!collapsedSections.has('Pinned')) pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
   }
   if (buckets['Today'].length) {
-    html += `<div class="section-label today">Today</div>`;
+    html += `<div class="section-label today" style="cursor:default;">Today</div>`;
     buckets['Today'].forEach(idea => { html += ideaRowHTML(idea, now); });
   }
   if (buckets['This Week'].length) {
-    html += `<div class="section-label">This Week</div>`;
-    buckets['This Week'].forEach(idea => { html += ideaRowHTML(idea, now); });
+    html += collapsibleLabel('This Week');
+    if (!collapsedSections.has('This Week')) buckets['This Week'].forEach(idea => { html += ideaRowHTML(idea, now); });
   }
   if (buckets['This Month'].length) {
-    html += `<div class="section-label">This Month</div>`;
-    buckets['This Month'].forEach(idea => { html += ideaRowHTML(idea, now); });
+    html += collapsibleLabel('This Month');
+    if (!collapsedSections.has('This Month')) buckets['This Month'].forEach(idea => { html += ideaRowHTML(idea, now); });
   }
   container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing recent</div><div class="empty-sub">Older ideas are in Folders and Search</div></div>`;
 }
@@ -1077,13 +1204,21 @@ function closeSwipedRows(except) {
 }
 
 function onRowPointerDown(e) {
-  if (e.target.closest('.idea-swipe-delete')) return; // let the button handle its own tap
+  if (e.target.closest('.idea-swipe-delete')) return;
   const row = e.target.closest('.idea-row');
   if (!row) return;
-  closeSwipedRows(row);          // only one delete tab open at a time
+  closeSwipedRows(row);
   swipeRow = row;
   swipeStartX = e.clientX; swipeStartY = e.clientY;
   swipeDX = 0; swipeActive = true; swipeLocked = false;
+  // Start peek hold timer
+  clearTimeout(peekHoldTimer);
+  const wrap = row.closest('.idea-row-wrap');
+  if (wrap && !row.classList.contains('swiped')) {
+    peekHoldTimer = setTimeout(() => {
+      if (swipeActive && !swipeLocked) showPeek(wrap.dataset.id);
+    }, 500);
+  }
 }
 
 function onRowPointerMove(e) {
@@ -1092,9 +1227,11 @@ function onRowPointerMove(e) {
   const dy = e.clientY - swipeStartY;
   if (!swipeLocked) {
     if (Math.abs(dx) > SWIPE_LOCK && Math.abs(dx) > Math.abs(dy)) {
-      swipeLocked = true;            // committed to a horizontal swipe
+      swipeLocked = true;
+      clearTimeout(peekHoldTimer); // cancel peek if swiping
     } else if (Math.abs(dy) > SWIPE_LOCK) {
-      swipeActive = false; swipeRow = null; return; // it's a vertical scroll — let it go
+      clearTimeout(peekHoldTimer);
+      swipeActive = false; swipeRow = null; return;
     } else { return; }
   }
   const base = swipeRow.classList.contains('swiped') ? -SWIPE_OPEN : 0;
@@ -1106,17 +1243,34 @@ function onRowPointerMove(e) {
 }
 
 function onRowPointerUp() {
+  clearTimeout(peekHoldTimer); peekHoldTimer = null;
   if (!swipeRow) return;
   const row = swipeRow;
   row.style.transition = '';
   row.style.transform = '';
   const wasOpen = row.classList.contains('swiped');
+
+  // If peek is showing, dismiss it and don't open the idea
+  if (peekShowing) {
+    hidePeek();
+    swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
+    return;
+  }
+
   if (swipeLocked) {
     const finalT = (wasOpen ? -SWIPE_OPEN : 0) + swipeDX;
-    if (finalT <= -SWIPE_TRIGGER) { row.classList.add('swiped'); haptic(12); }
-    else { row.classList.remove('swiped'); }
+    if (finalT <= -SWIPE_TRIGGER) {
+      if (wasOpen) {
+        // Second swipe on an already-open row → delete immediately
+        const wrap = row.closest('.idea-row-wrap');
+        if (wrap) { row.classList.remove('swiped'); deleteIdeaById(wrap.dataset.id); }
+      } else {
+        row.classList.add('swiped'); haptic(12);
+      }
+    } else {
+      row.classList.remove('swiped');
+    }
   } else if (Math.abs(swipeDX) < SWIPE_TAP) {
-    // a tap: if any row is open, just close it; otherwise open the idea
     if (document.querySelector('.idea-row.swiped')) {
       closeSwipedRows();
     } else {
@@ -1369,26 +1523,89 @@ document.addEventListener('click', (e) => {
   closeMoreMenu();
 });
 
+// ─── Peek preview ─────────────────────────────────────────────────────────────
+function showPeek(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  haptic(8);
+  peekShowing = true;
+  const items = (idea.problems && idea.problems.length ? idea.problems :
+                 idea.solutions && idea.solutions.length ? idea.solutions :
+                 idea.questions && idea.questions.length ? idea.questions :
+                 idea.bullets || []).slice(0, 3);
+  const bulletsHtml = items.map(b =>
+    `<div class="peek-bullet-row"><div class="peek-dot"></div><span>${escHtml(b)}</span></div>`
+  ).join('');
+  document.getElementById('peek-card').innerHTML = `
+    <div class="peek-title">${escHtml(idea.title)}</div>
+    <div class="peek-desc">${escHtml(idea.description)}</div>
+    ${items.length ? `<div class="peek-bullets">${bulletsHtml}</div>` : ''}
+  `;
+  document.getElementById('peek-overlay').classList.add('show');
+}
+function hidePeek() {
+  peekShowing = false;
+  document.getElementById('peek-overlay').classList.remove('show');
+}
+
+// ─── Move folder dropdown ──────────────────────────────────────────────────────
 function moveCurrentIdea() {
   closeMoreMenu();
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
+  const menu = document.getElementById('move-folder-menu');
   const folders = getFolders();
-  const list = folders.length ? folders.join('\n') + '\n' : '';
-  const choice = prompt(
-    'Move "' + (idea.title || 'idea') + '" to which folder?\n\n' +
-    'Existing folders:\n' + (list || '(none yet)\n') +
-    '\nType a folder name (new or existing), or leave blank for No folder:',
-    idea.folder || ''
-  );
-  if (choice === null) return; // cancelled
+  const chk = `<svg class="move-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:14px;height:14px;color:var(--orange)"><path d="M20 6L9 17l-5-5"/></svg>`;
+  let html = `<div class="move-section-hdr">Move to folder</div>`;
+  const noActive = !idea.folder;
+  html += `<button class="move-item${noActive?' active':''}" data-folder="" onclick="applyMoveFolderBtn(this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+    No folder${noActive ? chk : ''}
+  </button>`;
+  folders.forEach(f => {
+    const active = idea.folder === f;
+    html += `<button class="move-item${active?' active':''}" data-folder="${escHtml(f)}" onclick="applyMoveFolderBtn(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      ${escHtml(f)}${active ? chk : ''}
+    </button>`;
+  });
+  html += `<div class="move-menu-divider"></div>`;
+  html += `<button class="move-item add-folder" onclick="showMoveFolderInput()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14"/></svg>
+    New folder
+  </button>`;
+  html += `<input class="move-folder-input" id="move-new-input" type="text" placeholder="Folder name…" maxlength="30"
+    onkeydown="if(event.key==='Enter')applyMoveFolderNew()" autocomplete="off">`;
+  menu.innerHTML = html;
+  menu.classList.add('open');
+}
+function showMoveFolderInput() {
+  const el = document.getElementById('move-new-input');
+  if (el) { el.classList.add('show'); el.focus(); }
+}
+function applyMoveFolderBtn(btn) {
+  applyMoveFolder(btn.dataset.folder || '');
+}
+function applyMoveFolderNew() {
+  const el = document.getElementById('move-new-input');
+  if (!el) return;
+  const name = el.value.trim();
+  if (!name) { el.focus(); return; }
+  applyMoveFolder(name);
+}
+function applyMoveFolder(folderName) {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
   haptic(12);
-  idea.folder = choice.trim();
-  saveIdeas();
-  renderInbox();
-  renderFolders();
+  idea.folder = folderName || null;
+  saveIdeas(); renderInbox(); renderFolders();
+  closeMoveFolderMenu();
   openIdea(currentIdeaId, detailFromScreen);
   showToast(idea.folder ? 'Moved to ' + idea.folder : 'Removed from folder');
+}
+function closeMoveFolderMenu() {
+  const m = document.getElementById('move-folder-menu');
+  if (m) m.classList.remove('open');
 }
 
 function toggleTranscript() {
