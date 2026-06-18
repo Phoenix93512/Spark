@@ -1057,6 +1057,7 @@ function loadSettings() {
   if (voiceOn) startVoiceTrigger();
   document.getElementById('text-only-toggle').checked = isTextOnly();
   document.getElementById('demo-toggle').checked = demoEnabled();
+  updateSettingsModeUI();
 }
 function checkApiBanner() {
   const banner = document.getElementById('api-banner-inbox');
@@ -1087,7 +1088,7 @@ function showNavScreen(id) {
   };
   const navId = navMap[id];
   if (navId) document.getElementById(navId).classList.add('active');
-  if (id === 'screen-settings') updateSettingsCount();
+  if (id === 'screen-settings') { updateSettingsCount(); updateSettingsModeUI(); }
   if (id !== 'screen-detail' && id !== 'screen-search' && id !== 'screen-folder-detail') {
     activeNavScreen = id;
   }
@@ -1435,8 +1436,24 @@ function openIdea(id, fromScreen) {
   document.getElementById('detail-back-label').textContent =
     detailFromScreen === 'screen-folder-detail' ? 'Folder' : 'Home';
 
-  const bulletsHtml = (idea.bullets || []).map((b, i) =>
-    `<li><div class="bullet"></div><span class="bullet-text" data-i="${i}" ondblclick="startEditBullet(this)" title="Double-tap to edit">${escHtml(b)}</span></li>`).join('');
+  const mode = idea.mode || 'summary';
+  let summaryHtml = '';
+  if (mode === 'problems') {
+    const probHtml = (idea.problems || []).map((b, i) =>
+      `<li><div class="prob-bullet"></div><span class="bullet-text" data-field="problems" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
+    const solHtml  = (idea.solutions || []).map((b, i) =>
+      `<li><div class="sol-bullet"></div><span class="bullet-text" data-field="solutions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
+    summaryHtml = `<div class="block"><div class="block-label">Problems</div><ul class="summary-list">${probHtml}</ul></div>
+    <div class="block"><div class="block-label">Solutions</div><ul class="summary-list">${solHtml}</ul></div>`;
+  } else if (mode === 'questions' && idea.questions && idea.questions.length) {
+    const qHtml = (idea.questions || []).map((b, i) =>
+      `<li><div class="q-bullet"></div><span class="bullet-text" data-field="questions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
+    summaryHtml = `<div class="block"><div class="block-label">Questions to explore</div><ul class="summary-list">${qHtml}</ul></div>`;
+  } else {
+    const bulletsHtml = (idea.bullets || []).map((b, i) =>
+      `<li><div class="bullet"></div><span class="bullet-text" data-field="bullets" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
+    summaryHtml = `<div class="block"><div class="block-label">Summary</div><ul class="summary-list">${bulletsHtml}</ul></div>`;
+  }
   const tagsHtml = (idea.tags || []).map((t, i) =>
     `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}</span>`).join('');
 
@@ -1458,23 +1475,24 @@ function openIdea(id, fromScreen) {
   const folderBadge = `
     <span class="folder-badge" title="Double-tap to edit folder">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      <span class="fb-text" ondblclick="startEdit(this,'folder')">${idea.folder ? escHtml(idea.folder) : 'No folder'}</span>
+      <span class="fb-text" data-dtap="1" ondblclick="startEdit(this,'folder')">${idea.folder ? escHtml(idea.folder) : 'No folder'}</span>
     </span>`;
+
+  const transcriptContent = idea.transcript
+    ? escHtml(idea.transcript)
+    : '<em style="color:var(--text-3);">No transcript — idea was added without voice input</em>';
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-header">
-      <div class="detail-title" ondblclick="startEdit(this,'title')" title="Double-tap to edit">${escHtml(idea.title)}</div>
+      <div class="detail-title" data-dtap="1" ondblclick="startEdit(this,'title')" title="Double-tap to edit">${escHtml(idea.title)}</div>
       <div class="detail-time">${timeAgo(idea.createdAt)}</div>
     </div>
     <div class="detail-context">
       ${folderBadge}
-      <div class="detail-tags" id="detail-tags" ondblclick="startEdit(this,'tags')" title="Double-tap to edit tags">${tagsHtml}</div>
+      <div class="detail-tags" id="detail-tags" data-dtap="1" ondblclick="startEdit(this,'tags')" title="Double-tap to edit tags">${tagsHtml}</div>
     </div>
-    <div class="detail-desc" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
-    <div class="block">
-      <div class="block-label">Summary</div>
-      <ul class="summary-list">${bulletsHtml}</ul>
-    </div>
+    <div class="detail-desc" data-dtap="1" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
+    ${summaryHtml}
     ${relatedHtml}
     <div class="divider-line"></div>
     <button class="transcript-toggle" onclick="toggleTranscript()">
@@ -1482,7 +1500,7 @@ function openIdea(id, fromScreen) {
       Original transcript
       <svg class="chevron" id="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"/></svg>
     </button>
-    <div class="transcript-box" id="transcript-box" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${escHtml(idea.transcript || '')}</div>
+    <div class="transcript-box" id="transcript-box" data-dtap="1" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${transcriptContent}</div>
   `;
 
   // reflect pin state in the more-menu
@@ -1518,9 +1536,13 @@ function closeMoreMenu() {
 }
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('more-menu');
-  if (!menu || !menu.classList.contains('open')) return;
-  if (menu.contains(e.target) || e.target.closest('#more-btn')) return;
-  closeMoreMenu();
+  if (menu && menu.classList.contains('open')) {
+    if (!menu.contains(e.target) && !e.target.closest('#more-btn')) closeMoreMenu();
+  }
+  const moveMenu = document.getElementById('move-folder-menu');
+  if (moveMenu && moveMenu.classList.contains('open')) {
+    if (!moveMenu.contains(e.target) && !e.target.closest('#more-btn')) closeMoveFolderMenu();
+  }
 });
 
 // ─── Peek preview ─────────────────────────────────────────────────────────────
@@ -1672,12 +1694,13 @@ function endEditBullet(el) {
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
   const i = parseInt(el.dataset.i, 10);
-  if (!Array.isArray(idea.bullets)) idea.bullets = [];
+  const field = el.dataset.field || 'bullets';
+  if (!Array.isArray(idea[field])) idea[field] = [];
   const text = el.textContent.trim();
-  if (text) idea.bullets[i] = text;
-  else idea.bullets.splice(i, 1); // empty bullet → remove it
+  if (text) idea[field][i] = text;
+  else idea[field].splice(i, 1);
   saveIdeas();
-  openIdea(currentIdeaId, detailFromScreen); // re-render so indices stay correct
+  openIdea(currentIdeaId, detailFromScreen);
 }
 
 function copyCurrentIdea() {
@@ -2028,6 +2051,41 @@ function stopWaveform() {
   wf.querySelectorAll('.wave-bar').forEach(b => b.style.height = '');
 }
 
+// ─── Framing mode ────────────────────────────────────────────────────────────
+function getGlobalMode() {
+  return localStorage.getItem('spark-default-mode') || 'summary';
+}
+function setGlobalMode(mode) {
+  localStorage.setItem('spark-default-mode', mode);
+  updateSettingsModeUI();
+  const labels = { summary: 'Default: Summary', problems: 'Default: Problems / Solutions', questions: 'Default: Questions' };
+  showToast(labels[mode] || 'Mode updated');
+}
+function updateSettingsModeUI() {
+  const mode = getGlobalMode();
+  ['summary', 'problems', 'questions'].forEach(m => {
+    const btn = document.getElementById('settings-mode-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+}
+function setSaveMode(mode) {
+  currentSaveMode = mode;
+  ['summary', 'problems', 'questions'].forEach(m => {
+    const btn = document.getElementById('mode-btn-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  // Re-run AI with the new mode if we have a result already
+  const key = getApiKey();
+  if (currentTranscript && key) {
+    document.getElementById('result-preview').classList.remove('show');
+    document.getElementById('folder-picker').classList.remove('show');
+    document.getElementById('mode-picker-wrap').style.display = 'none';
+    document.getElementById('save-idea-btn').disabled = true;
+    showLoadingQuote();
+    callGemini(currentTranscript, key);
+  }
+}
+
 // ─── Processing (Gemini AI) ───────────────────────────────────────────────────
 const QUOTES = [
   { t: 'The best way to have a good idea is to have a lot of ideas.', a: 'Linus Pauling' },
@@ -2065,6 +2123,9 @@ function showProcessing() {
   document.getElementById('transcript-toggle').classList.remove('show', 'open');
   document.getElementById('transcript-wrap').classList.remove('show');
   document.getElementById('transcript-toggle-label').textContent = 'Show original transcript';
+  // Mode picker: reset to current global default, hidden until result loads
+  currentSaveMode = getGlobalMode();
+  document.getElementById('mode-picker-wrap').style.display = 'none';
   pendingIdea = null;
   hideOverlays();
   document.getElementById('overlay-processing').classList.add('active');
@@ -2120,6 +2181,44 @@ async function callGemini(transcript, apiKey) {
   const existingFolders = getFolders().join(', ');
   const ideasContext = ideas.slice(0, 10).map(i => `[${i.id}] ${i.title}: ${i.description}`).join('\n');
 
+  let formatBlock = '';
+  if (currentSaveMode === 'problems') {
+    formatBlock = `{
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "problems": ["Key problem 1", "Key problem 2"],
+  "solutions": ["Key solution 1", "Key solution 2"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]
+}
+Rules:
+- problems: 2-3 key problems, challenges, or pain points this idea addresses (each under 15 words)
+- solutions: 2-3 key solutions, approaches, or opportunities this idea offers (each under 15 words)`;
+  } else if (currentSaveMode === 'questions') {
+    formatBlock = `{
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "questions": ["Sharp question 1?", "Sharp question 2?"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]
+}
+Rules:
+- questions: 4-6 sharp questions that push the idea further. Cover core assumptions ("Does this problem really exist at scale?"), economics ("Who pays? What does it cost to build? What's the revenue model?"), competition ("What alternatives already exist?"), user reality ("Who specifically benefits and how often?"), and feasibility ("What's the hardest part to execute?"). Make each question thought-provoking, not rhetorical.`;
+  } else {
+    formatBlock = `{
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "bullets": ["Key point 1", "Key point 2", "Key point 3"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]
+}
+Rules:
+- bullets: 2-4 concise points, each under 15 words`;
+  }
+
   const prompt = `Summarize this spoken idea and return ONLY valid JSON with no markdown, no backticks, no explanation.
 
 Transcript: "${transcript}"
@@ -2131,17 +2230,7 @@ Context:
 ${ideasContext || 'none yet'}
 
 Return exactly this JSON:
-{
-  "title": "Short clear title (max 6 words)",
-  "description": "One sentence that captures the core insight",
-  "bullets": ["Key point 1", "Key point 2", "Key point 3"],
-  "tags": ["tag1", "tag2"],
-  "folder": "suggested folder name or null",
-  "relatedTo": ["idea-id-if-strongly-related"]
-}
-
-Rules:
-- bullets: 2-4 concise points, each under 15 words
+${formatBlock}
 - tags: 1-3 lowercase single words, reuse existing tags where possible
 - folder: reuse an existing folder if it fits, suggest a new short name, or null
 - relatedTo: only IDs from the recent ideas list above, only if clearly related
@@ -2164,7 +2253,10 @@ Rules:
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
-    if (!parsed.title || !parsed.bullets) throw new Error('Invalid response format');
+    if (!parsed.title) throw new Error('Invalid response format');
+    if (currentSaveMode === 'problems' && !parsed.problems) throw new Error('Invalid response format');
+    if (currentSaveMode === 'questions' && !parsed.questions) throw new Error('Invalid response format');
+    if (currentSaveMode === 'summary' && !parsed.bullets) throw new Error('Invalid response format');
     showResult(parsed);
   } catch(e) {
     showProcessingError(e.message);
@@ -2189,7 +2281,11 @@ function showResult(parsed, noAI) {
     id: Date.now().toString(),
     title: parsed.title,
     description: parsed.description || '',
-    bullets: parsed.bullets || [],
+    mode: noAI ? 'summary' : currentSaveMode,
+    bullets:   parsed.bullets   || [],
+    problems:  parsed.problems  || [],
+    solutions: parsed.solutions || [],
+    questions: parsed.questions || [],
     tags: parsed.tags || [],
     folder: parsed.folder || null,
     relatedTo: (parsed.relatedTo || []).filter(id => ideas.some(i => i.id === id)),
@@ -2217,6 +2313,16 @@ function showResult(parsed, noAI) {
   document.getElementById('processing-transcript').textContent = currentTranscript;
   document.getElementById('transcript-toggle').classList.add('show');
   document.getElementById('save-idea-btn').disabled = false;
+
+  // Show mode picker (not for no-AI fallback)
+  if (!noAI) {
+    const wrap = document.getElementById('mode-picker-wrap');
+    wrap.style.display = 'flex';
+    ['summary', 'problems', 'questions'].forEach(m => {
+      const btn = document.getElementById('mode-btn-' + m);
+      if (btn) btn.classList.toggle('active', m === currentSaveMode);
+    });
+  }
 }
 
 function populateFolderPicker(suggestedFolder) {
@@ -2389,6 +2495,23 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
+
+// ─── Double-tap polyfill (touch-action:manipulation suppresses dblclick on iOS) ─
+(function() {
+  let _el = null, _ts = 0;
+  document.addEventListener('touchend', function(e) {
+    const target = e.target.closest('[data-dtap]');
+    if (!target) { _el = null; return; }
+    const now = Date.now();
+    if (target === _el && now - _ts < 400) {
+      e.preventDefault();
+      target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+      _el = null; _ts = 0;
+    } else {
+      _el = target; _ts = now;
+    }
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>
