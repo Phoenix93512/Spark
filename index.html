@@ -79,12 +79,12 @@
   .more-item svg { width: 19px; height: 19px; flex-shrink: 0; }
   .more-item.danger { color: #eb5757; }
 
-  .content { flex: 1; overflow-y: auto; padding: 0 24px 20px; }
+  .content { flex: 1; overflow-y: auto; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); }
   .content::-webkit-scrollbar { display: none; }
 
   .section-label {
-    font-size: 13px; font-weight: 600; color: var(--text-2);
-    letter-spacing: 0.02em; text-transform: uppercase; padding: 26px 0 12px;
+    font-size: 18px; font-weight: 600; color: var(--text-2);
+    letter-spacing: -0.2px; text-transform: none; padding: 26px 0 12px;
     display: flex; align-items: center; justify-content: space-between;
     cursor: pointer; user-select: none;
   }
@@ -96,25 +96,15 @@
   .section-chevron { width: 14px; height: 14px; color: var(--text-3); transition: transform 0.2s; flex-shrink: 0; }
   .section-label.collapsed .section-chevron { transform: rotate(-90deg); }
 
-  /* Peek preview overlay */
-  .peek-overlay {
-    position: absolute; inset: 0; z-index: 50;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.28); backdrop-filter: blur(3px);
-    opacity: 0; pointer-events: none; transition: opacity 0.12s;
-  }
-  .peek-overlay.show { opacity: 1; pointer-events: auto; }
-  .peek-card {
-    background: var(--bg); border-radius: 18px; padding: 20px 20px 18px;
-    max-width: calc(100% - 48px); width: 320px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.22);
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .peek-title { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; line-height: 1.25; }
-  .peek-desc { font-size: 14px; color: var(--text-2); line-height: 1.4; }
-  .peek-bullets { display: flex; flex-direction: column; gap: 7px; }
-  .peek-bullet-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-2); line-height: 1.4; }
-  .peek-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); flex-shrink: 0; margin-top: 7px; }
+  /* AI-generated content indicator */
+  .ai-section { border-left: 2px solid rgba(244,107,14,0.15); padding-left: 12px; }
+
+  /* Tag editing */
+  .tag-x { border: none; background: none; cursor: pointer; color: var(--text-3); font-size: 11px; padding: 0 0 0 3px; line-height: 1; font-family: var(--font); }
+  .tag-x:hover { color: var(--text); }
+  .tag-add-btn { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--bg-2); color: var(--text-3); border: none; cursor: pointer; font-family: var(--font); }
+  .tag-add-btn:hover { background: var(--bg-3); }
+  .tag-inline-input { font-size: 12px; padding: 3px 8px; border-radius: 6px; border: 1.5px solid var(--orange); outline: none; font-family: var(--font); background: var(--bg); color: var(--text); width: 90px; }
 
   /* Move folder dropdown */
   .move-folder-menu {
@@ -210,7 +200,7 @@
     display: flex; align-items: flex-start; gap: 14px;
     cursor: pointer; border-radius: 6px;
     padding: 17px 8px;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.1s;
     touch-action: pan-y;
   }
   .idea-row:hover { background: var(--bg-2); }
@@ -426,47 +416,36 @@
   }
   .overlay.active { display: flex; }
 
-  #overlay-recording { background: #0D0D0D; justify-content: flex-start; gap: 0; padding: 0; }
+  #overlay-recording { background: var(--bg); justify-content: flex-start; gap: 0; padding: 0; }
   .rec-nav {
-    width: 100%; display: flex; align-items: center; position: relative;
+    width: 100%; display: flex; align-items: center;
     padding: max(52px, calc(env(safe-area-inset-top) + 16px)) 20px 0;
   }
   .rec-cancel-btn {
-    border: none; background: none; cursor: pointer; padding: 8px 0;
-    font-family: var(--font); font-size: 15px; color: rgba(255,255,255,0.45);
-    display: flex; align-items: center; gap: 3px; transition: color 0.15s;
+    border: none; background: none; cursor: pointer; padding: 8px 4px 8px 0;
+    display: flex; align-items: center; color: var(--text-3); transition: color 0.15s;
   }
-  .rec-cancel-btn:hover { color: rgba(255,255,255,0.8); }
-  .rec-cancel-btn svg { width: 16px; height: 16px; }
-  .rec-screen-title {
-    font-size: 17px; font-weight: 500; color: rgba(255,255,255,0.75);
-    position: absolute; left: 50%; transform: translateX(-50%);
-  }
-  .rec-indicator-row { display: flex; align-items: center; gap: 7px; margin-top: 32px; }
-  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #F46B0E; animation: rec-blink 1.4s ease-in-out infinite; }
-  @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.12} }
-  .rec-indicator-label { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255,255,255,0.38); }
-  .rec-time { font-size: 56px; font-weight: 300; color: #fff; letter-spacing: -2px; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .rec-waveform { display: flex; align-items: flex-end; justify-content: center; gap: 7px; height: 130px; margin: 36px 0 28px; flex-shrink: 0; }
-  .wave-bar { width: 10px; border-radius: 5px; background: #F46B0E; height: 8px; flex-shrink: 0; }
-  .rec-hint-text { font-size: 14px; color: rgba(255,255,255,0.24); text-align: center; padding: 0 48px; line-height: 1.5; }
+  .rec-cancel-btn:hover { color: var(--text); }
+  .rec-cancel-btn svg { width: 22px; height: 22px; }
+  .rec-time { font-size: 56px; font-weight: 300; color: var(--text); letter-spacing: -2px; margin-top: 32px; font-variant-numeric: tabular-nums; line-height: 1.1; align-self: center; }
+  .rec-waveform { display: flex; align-items: flex-end; justify-content: center; gap: 7px; height: 130px; margin: 36px 0 0; flex-shrink: 0; }
+  .wave-bar { width: 10px; border-radius: 5px; background: var(--orange); height: 8px; flex-shrink: 0; }
   .rec-error-dark {
-    display: none; width: calc(100% - 48px); background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,80,80,0.3); border-radius: 8px;
-    padding: 11px 14px; font-size: 12px; color: rgba(255,100,100,0.85);
-    line-height: 1.5; margin-top: 16px;
+    display: none; width: calc(100% - 48px); background: #fff5f5;
+    border: 1px solid #fddede; border-radius: 8px;
+    padding: 11px 14px; font-size: 12px; color: #c0392b;
+    line-height: 1.5; margin-top: 16px; align-self: center;
   }
   .rec-error-dark.show { display: block; }
   .rec-stop {
     width: 70px; height: 70px; border-radius: 50%; flex-shrink: 0;
-    background: rgba(255,255,255,0.09); border: 1.5px solid rgba(255,255,255,0.14);
+    background: var(--orange); border: none;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: transform 0.12s, background 0.15s;
-    margin-top: auto; margin-bottom: calc(48px + env(safe-area-inset-bottom));
+    cursor: pointer; transition: transform 0.12s;
+    margin-top: auto; margin-bottom: calc(52px + env(safe-area-inset-bottom));
   }
-  .rec-stop:hover { background: rgba(255,255,255,0.16); }
   .rec-stop:active { transform: scale(0.94); }
-  .rec-stop-inner { width: 25px; height: 25px; border-radius: 5px; background: #fff; }
+  .rec-stop-inner { width: 24px; height: 24px; border-radius: 5px; background: #fff; }
 
   /* Text-capture overlay */
   #overlay-text {
@@ -769,6 +748,27 @@
         </div>
       </div>
       <div class="settings-section">
+        <div class="settings-label">Export</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Last 7 days</div>
+            <div class="settings-row-sub">Share ideas from the past week</div>
+          </div>
+          <button class="icon-btn" onclick="exportIdeas(7)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+          </button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Last 30 days</div>
+            <div class="settings-row-sub">Share ideas from the past month</div>
+          </div>
+          <button class="icon-btn" onclick="exportIdeas(30)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="settings-section">
         <div class="settings-label">Data</div>
         <div class="settings-row">
           <div class="settings-row-info">
@@ -842,11 +842,6 @@
     </button>
   </nav>
 
-  <!-- PEEK PREVIEW OVERLAY -->
-  <div class="peek-overlay" id="peek-overlay">
-    <div class="peek-card" id="peek-card"></div>
-  </div>
-
   <!-- UNDO DELETE PROMPT -->
   <button class="undo-toast" id="undo-toast" onclick="undoDelete()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5a9 9 0 1 1-1.2 5"/><polyline points="3 4 3 9.5 8.5 9.5"/></svg>
@@ -856,24 +851,17 @@
   <!-- RECORDING OVERLAY -->
   <div class="overlay" id="overlay-recording">
     <div class="rec-nav">
-      <button class="rec-cancel-btn" onclick="cancelRecording()">
+      <button class="rec-cancel-btn" onclick="cancelRecording()" aria-label="Cancel recording">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Cancel
       </button>
-      <span class="rec-screen-title">New Idea</span>
-    </div>
-    <div class="rec-indicator-row">
-      <div class="rec-dot" id="rec-dot"></div>
-      <span class="rec-indicator-label">Recording</span>
     </div>
     <div class="rec-time" id="rec-time">0:00</div>
     <div class="rec-waveform" id="rec-waveform">
       <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
       <div class="wave-bar"></div><div class="wave-bar"></div>
     </div>
-    <div class="rec-hint-text">Speak naturally — AI will transcribe when done</div>
     <div class="rec-error-dark" id="rec-error"></div>
-    <button class="rec-stop" id="rec-stop-btn" onclick="stopRecording()">
+    <button class="rec-stop" id="rec-stop-btn" onclick="stopRecording()" aria-label="Stop recording">
       <div class="rec-stop-inner"></div>
     </button>
   </div>
@@ -952,8 +940,6 @@ let recSeconds = 0;
 let activeNavScreen = 'screen-inbox';
 let collapsedSections = new Set();
 let currentSaveMode = 'summary';
-let peekShowing = false;
-let peekHoldTimer = null;
 
 // ─── Feedback: best-effort vibrate (no-op on iOS) + tiny orange pulse ────────────
 function haptic(ms = 10) {
@@ -1098,6 +1084,31 @@ function clearAllData() {
   showToast('All data cleared');
 }
 
+async function exportIdeas(days) {
+  const cutoff = Date.now() - days * 86400000;
+  const filtered = ideas.filter(i => !isDemoIdea(i) && i.createdAt >= cutoff);
+  if (!filtered.length) { showToast(`No ideas in the last ${days} days`); return; }
+  const lines = filtered.sort((a, b) => b.createdAt - a.createdAt).map(idea => {
+    const bullets = (idea.bullets || idea.problems || idea.solutions || idea.questions || []);
+    const bulletLines = bullets.map(b => `- ${b}`).join('\n');
+    return `## ${idea.title}\n${idea.description}${bulletLines ? '\n' + bulletLines : ''}`;
+  });
+  const text = `# Spark Ideas — Last ${days} Days\n\n${lines.join('\n\n---\n\n')}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `Spark Ideas — Last ${days} Days`, text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard');
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      showToast('Copied to clipboard');
+    }
+  }
+}
+
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 function showNavScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1234,14 +1245,6 @@ function onRowPointerDown(e) {
   swipeRow = row;
   swipeStartX = e.clientX; swipeStartY = e.clientY;
   swipeDX = 0; swipeActive = true; swipeLocked = false;
-  // Start peek hold timer
-  clearTimeout(peekHoldTimer);
-  const wrap = row.closest('.idea-row-wrap');
-  if (wrap && !row.classList.contains('swiped')) {
-    peekHoldTimer = setTimeout(() => {
-      if (swipeActive && !swipeLocked) showPeek(wrap.dataset.id);
-    }, 500);
-  }
 }
 
 function onRowPointerMove(e) {
@@ -1251,9 +1254,7 @@ function onRowPointerMove(e) {
   if (!swipeLocked) {
     if (Math.abs(dx) > SWIPE_LOCK && Math.abs(dx) > Math.abs(dy)) {
       swipeLocked = true;
-      clearTimeout(peekHoldTimer); // cancel peek if swiping
     } else if (Math.abs(dy) > SWIPE_LOCK) {
-      clearTimeout(peekHoldTimer);
       swipeActive = false; swipeRow = null; return;
     } else { return; }
   }
@@ -1266,19 +1267,11 @@ function onRowPointerMove(e) {
 }
 
 function onRowPointerUp() {
-  clearTimeout(peekHoldTimer); peekHoldTimer = null;
   if (!swipeRow) return;
   const row = swipeRow;
   row.style.transition = '';
   row.style.transform = '';
   const wasOpen = row.classList.contains('swiped');
-
-  // If peek is showing, dismiss it and don't open the idea
-  if (peekShowing) {
-    hidePeek();
-    swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
-    return;
-  }
 
   if (swipeLocked) {
     const finalT = (wasOpen ? -SWIPE_OPEN : 0) + swipeDX;
@@ -1460,24 +1453,26 @@ function openIdea(id, fromScreen) {
 
   const mode = idea.mode || 'summary';
   let summaryHtml = '';
+  const hasAI = !!idea.mode;
   if (mode === 'problems') {
     const probHtml = (idea.problems || []).map((b, i) =>
       `<li><div class="prob-bullet"></div><span class="bullet-text" data-field="problems" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
     const solHtml  = (idea.solutions || []).map((b, i) =>
       `<li><div class="sol-bullet"></div><span class="bullet-text" data-field="solutions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="block"><div class="block-label">Problems</div><ul class="summary-list">${probHtml}</ul></div>
-    <div class="block"><div class="block-label">Solutions</div><ul class="summary-list">${solHtml}</ul></div>`;
+    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Problems</div><ul class="summary-list">${probHtml}</ul></div>
+    <div class="block"><div class="block-label">Solutions</div><ul class="summary-list">${solHtml}</ul></div></div>`;
   } else if (mode === 'questions' && idea.questions && idea.questions.length) {
     const qHtml = (idea.questions || []).map((b, i) =>
       `<li><div class="q-bullet"></div><span class="bullet-text" data-field="questions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="block"><div class="block-label">Questions to explore</div><ul class="summary-list">${qHtml}</ul></div>`;
+    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Questions to explore</div><ul class="summary-list">${qHtml}</ul></div></div>`;
   } else {
     const bulletsHtml = (idea.bullets || []).map((b, i) =>
       `<li><div class="bullet"></div><span class="bullet-text" data-field="bullets" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="block"><div class="block-label">Summary</div><ul class="summary-list">${bulletsHtml}</ul></div>`;
+    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Summary</div><ul class="summary-list">${bulletsHtml}</ul></div></div>`;
   }
   const tagsHtml = (idea.tags || []).map((t, i) =>
-    `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}</span>`).join('');
+    `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}<button class="tag-x" onclick="removeTag(${i})" aria-label="Remove tag">×</button></span>`).join('') +
+    `<button class="tag-add-btn" onclick="showAddTag()">+</button>`;
 
   const relatedIdeas = (idea.relatedTo || [])
     .map(rid => ideas.find(i => i.id === rid))
@@ -1511,7 +1506,7 @@ function openIdea(id, fromScreen) {
     </div>
     <div class="detail-context">
       ${folderBadge}
-      <div class="detail-tags" id="detail-tags" data-dtap="1" ondblclick="startEdit(this,'tags')" title="Double-tap to edit tags">${tagsHtml}</div>
+      <div class="detail-tags" id="detail-tags">${tagsHtml}</div>
     </div>
     <div class="detail-desc" data-dtap="1" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
     ${summaryHtml}
@@ -1568,29 +1563,6 @@ document.addEventListener('click', (e) => {
 });
 
 // ─── Peek preview ─────────────────────────────────────────────────────────────
-function showPeek(id) {
-  const idea = ideas.find(i => i.id === id);
-  if (!idea) return;
-  haptic(8);
-  peekShowing = true;
-  const items = (idea.problems && idea.problems.length ? idea.problems :
-                 idea.solutions && idea.solutions.length ? idea.solutions :
-                 idea.questions && idea.questions.length ? idea.questions :
-                 idea.bullets || []).slice(0, 3);
-  const bulletsHtml = items.map(b =>
-    `<div class="peek-bullet-row"><div class="peek-dot"></div><span>${escHtml(b)}</span></div>`
-  ).join('');
-  document.getElementById('peek-card').innerHTML = `
-    <div class="peek-title">${escHtml(idea.title)}</div>
-    <div class="peek-desc">${escHtml(idea.description)}</div>
-    ${items.length ? `<div class="peek-bullets">${bulletsHtml}</div>` : ''}
-  `;
-  document.getElementById('peek-overlay').classList.add('show');
-}
-function hidePeek() {
-  peekShowing = false;
-  document.getElementById('peek-overlay').classList.remove('show');
-}
 
 // ─── Move folder dropdown ──────────────────────────────────────────────────────
 function moveCurrentIdea() {
@@ -1657,6 +1629,46 @@ function toggleTranscript() {
   const ch = document.getElementById('chevron');
   box.classList.toggle('open');
   ch.style.transform = box.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// ─── Tag editing ──────────────────────────────────────────────────────────────
+function removeTag(index) {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea) return;
+  idea.tags = (idea.tags || []).filter((_, i) => i !== index);
+  saveIdeas();
+  openIdea(currentIdeaId, detailFromScreen);
+}
+
+function showAddTag() {
+  const container = document.getElementById('detail-tags');
+  if (!container) return;
+  const addBtn = container.querySelector('.tag-add-btn');
+  if (addBtn) addBtn.style.display = 'none';
+  const input = document.createElement('input');
+  input.className = 'tag-inline-input';
+  input.placeholder = 'New tag…';
+  input.maxLength = 20;
+  container.appendChild(input);
+  input.focus();
+  const commit = () => {
+    const val = input.value.trim().toLowerCase().replace(/\s+/g, '-');
+    if (val) addTag(val);
+    else openIdea(currentIdeaId, detailFromScreen);
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') openIdea(currentIdeaId, detailFromScreen);
+  });
+  input.addEventListener('blur', commit);
+}
+
+function addTag(text) {
+  const idea = ideas.find(i => i.id === currentIdeaId);
+  if (!idea || !text) return;
+  idea.tags = [...(idea.tags || []), text];
+  saveIdeas();
+  openIdea(currentIdeaId, detailFromScreen);
 }
 
 // Double-tap any detail field to edit it in place (orange caret via CSS)
@@ -1990,17 +2002,9 @@ async function stopRecording() {
   }
 
   const key = getApiKey();
-  if (!key) { currentTranscript = ''; saveWithoutAI(); return; }
+  if (!key) { showManualFallback(); return; }
 
-  try {
-    currentTranscript = await transcribeWithGemini(audioBlob, key);
-    document.getElementById('processing-transcript').textContent = currentTranscript;
-  } catch(e) {
-    showProcessingError('Transcription failed: ' + e.message);
-    return;
-  }
-
-  callGemini(currentTranscript, key);
+  callGeminiWithAudio(audioBlob, key);
 }
 
 function cancelRecording() {
@@ -2022,7 +2026,109 @@ function showRecError(msg) {
   document.querySelectorAll('#rec-waveform .wave-bar').forEach(b => b.style.opacity = '0.2');
 }
 
-// ─── Gemini audio transcription ───────────────────────────────────────────────
+// ─── Combined Gemini audio transcription + summarisation (single API call) ────
+function showManualFallback() {
+  document.getElementById('overlay-processing').classList.remove('loading');
+  document.getElementById('processing-status').innerHTML =
+    '<span style="color:var(--text-3);">No API key — type your idea below to save it.</span>';
+  document.getElementById('transcript-toggle').classList.remove('show', 'open');
+  document.getElementById('transcript-wrap').classList.add('show');
+  const ta = document.getElementById('processing-transcript');
+  ta.textContent = '';
+  ta.contentEditable = 'true';
+  ta.focus();
+  document.getElementById('save-idea-btn').disabled = false;
+  document.getElementById('save-idea-btn').onclick = () => {
+    currentTranscript = ta.innerText.trim();
+    saveWithoutAI();
+  };
+}
+
+async function callGeminiWithAudio(audioBlob, apiKey) {
+  const existingTags = [...new Set(ideas.flatMap(i => i.tags || []))].slice(0, 20).join(', ');
+  const existingFolders = getFolders().join(', ');
+  const ideasContext = ideas.slice(0, 10).map(i => `[${i.id}] ${i.title}: ${i.description}`).join('\n');
+
+  let formatBlock = '';
+  if (currentSaveMode === 'problems') {
+    formatBlock = `"transcript": "full spoken words",
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "problems": ["Key problem 1", "Key problem 2"],
+  "solutions": ["Key solution 1", "Key solution 2"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]`;
+  } else if (currentSaveMode === 'questions') {
+    formatBlock = `"transcript": "full spoken words",
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "questions": ["Sharp question 1?", "Sharp question 2?"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]`;
+  } else {
+    formatBlock = `"transcript": "full spoken words",
+  "title": "Short clear title (max 6 words)",
+  "description": "One sentence that captures the core insight",
+  "bullets": ["Key point 1", "Key point 2", "Key point 3"],
+  "tags": ["tag1", "tag2"],
+  "folder": "suggested folder name or null",
+  "relatedTo": ["idea-id-if-strongly-related"]`;
+  }
+
+  const prompt = `First transcribe this voice recording accurately, then summarize the idea. Return ONLY valid JSON with no markdown, no backticks, no explanation.
+
+Context:
+- Existing tags to reuse if relevant: ${existingTags || 'none yet'}
+- Existing folders to reuse if relevant: ${existingFolders || 'none yet'}
+- Recent ideas (for detecting connections):
+${ideasContext || 'none yet'}
+
+Return exactly this JSON:
+{
+  ${formatBlock}
+}
+Rules:
+- transcript: the full verbatim spoken words from the audio
+- tags: 1-3 lowercase single words, reuse existing tags where possible
+- folder: reuse an existing folder if the idea fits; only suggest a new folder name if no existing one applies; null if nothing fits
+- relatedTo: only IDs from the recent ideas list above, only if clearly related
+${currentSaveMode === 'problems' ? '- problems: 2-3 key problems or pain points (each under 15 words)\n- solutions: 2-3 key solutions or approaches (each under 15 words)' : ''}${currentSaveMode === 'questions' ? '- questions: 4-6 sharp questions covering assumptions, economics, competition, user reality, feasibility' : ''}${currentSaveMode === 'summary' ? '- bullets: 2-4 concise points, each under 15 words' : ''}
+- Return ONLY the JSON, nothing else`;
+
+  try {
+    const base64 = await blobToBase64(audioBlob);
+    const mime = audioBlob.type || 'audio/webm';
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [
+          { inline_data: { mime_type: mime, data: base64 } },
+          { text: prompt }
+        ]}]})
+      }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (!parsed.title) throw new Error('Invalid response format');
+    currentTranscript = parsed.transcript || '';
+    document.getElementById('processing-transcript').textContent = currentTranscript;
+    showResult(parsed);
+  } catch(e) {
+    showProcessingError(e.message);
+  }
+}
+
+// ─── Legacy audio-only transcription (kept for retry flow) ────────────────────
 async function transcribeWithGemini(audioBlob, apiKey) {
   const base64 = await blobToBase64(audioBlob);
   const mime = audioBlob.type || 'audio/webm';
@@ -2062,18 +2168,19 @@ function startWaveform(stream) {
     const source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 128;
-    analyser.smoothingTimeConstant = 0.78;
+    analyser.smoothingTimeConstant = 0.85;
     source.connect(analyser);
     const bars = document.querySelectorAll('#rec-waveform .wave-bar');
     const data = new Uint8Array(analyser.frequencyBinCount);
+    const binMap = [1, 3, 5, 7, 10];
     const tick = () => {
       if (!analyser) return;
       analyser.getByteFrequencyData(data);
       bars.forEach((bar, i) => {
-        const idx = Math.round(1 + i * (data.length * 0.4 / (bars.length - 1)));
-        const v = (data[idx] || 0) / 255;
-        bar.style.height = Math.round(8 + v * 122) + 'px';
-        bar.style.boxShadow = `0 0 ${Math.round(v * 18)}px rgba(244,107,14,${(v * 0.68).toFixed(2)})`;
+        const v = (data[binMap[i]] || 0) / 255;
+        const clean = Math.max(0, (v - 0.12) / 0.88);
+        bar.style.height = Math.round(8 + clean * 122) + 'px';
+        bar.style.boxShadow = `0 0 ${Math.round(clean * 18)}px rgba(244,107,14,${(clean * 0.68).toFixed(2)})`;
       });
       waveRAF = requestAnimationFrame(tick);
     };
@@ -2268,7 +2375,7 @@ ${ideasContext || 'none yet'}
 Return exactly this JSON:
 ${formatBlock}
 - tags: 1-3 lowercase single words, reuse existing tags where possible
-- folder: reuse an existing folder if it fits, suggest a new short name, or null
+- folder: reuse an existing folder if the idea fits; only suggest a new folder name if no existing one applies; null if nothing fits
 - relatedTo: only IDs from the recent ideas list above, only if clearly related
 - Return ONLY the JSON, nothing else`;
 
