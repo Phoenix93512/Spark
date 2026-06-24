@@ -97,14 +97,25 @@
   .section-label.collapsed .section-chevron { transform: rotate(-90deg); }
 
   /* AI-generated content indicator */
-  .ai-section { border-left: 2px solid rgba(244,107,14,0.15); padding-left: 12px; }
+  .folder-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 9px; border-radius: 8px; background: var(--bg-2); cursor: pointer; user-select: none; }
+  .folder-chip.has-folder { background: var(--orange-light); }
+  .folder-chip svg { width: 14px; height: 14px; stroke: var(--text-3); flex-shrink: 0; }
+  .folder-chip.has-folder svg { stroke: var(--orange); }
+  .folder-chip-label { font-size: 14px; color: var(--text-2); }
+  .folder-chip.has-folder .folder-chip-label { color: var(--orange); }
+  .folder-chip-drop { max-height: 0; overflow: hidden; transition: max-height 0.25s cubic-bezier(.4,0,.2,1); background: var(--bg); border-radius: 12px; border: 0.5px solid var(--border); margin-top: 8px; }
+  .folder-chip-drop.open { max-height: 280px; }
+  .fcd-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 15px; color: var(--text); cursor: pointer; }
+  .fcd-item:not(:last-child) { border-bottom: 0.5px solid var(--border-light); }
+  .fcd-item.active { color: var(--orange); font-weight: 500; }
+  .fcd-check { width: 14px; height: 14px; opacity: 0; stroke: var(--orange); flex-shrink: 0; }
+  .fcd-item.active .fcd-check { opacity: 1; }
+  .fcd-new { display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 15px; color: var(--text-3); cursor: pointer; border-top: 0.5px solid var(--border); }
+  .fcd-new svg { width: 15px; height: 15px; stroke: var(--text-3); flex-shrink: 0; }
+  .fcd-input { display: none; width: 100%; font-size: 15px; padding: 11px 16px; border: none; border-top: 0.5px solid var(--border); outline: none; font-family: var(--font); background: var(--bg); color: var(--text); }
+  .fcd-input.show { display: block; }
 
   /* Tag editing */
-  .tag-x { border: none; background: none; cursor: pointer; color: var(--text-3); font-size: 11px; padding: 0 0 0 3px; line-height: 1; font-family: var(--font); }
-  .tag-x:hover { color: var(--text); }
-  .tag-add-btn { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--bg-2); color: var(--text-3); border: none; cursor: pointer; font-family: var(--font); }
-  .tag-add-btn:hover { background: var(--bg-3); }
-  .tag-inline-input { font-size: 12px; padding: 3px 8px; border-radius: 6px; border: 1.5px solid var(--orange); outline: none; font-family: var(--font); background: var(--bg); color: var(--text); width: 90px; }
 
   /* Move folder dropdown */
   .move-folder-menu {
@@ -281,17 +292,7 @@
   .detail-title { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 8px; }
   .detail-time { font-size: 13px; color: var(--text-3); }
   .detail-desc { font-size: 17px; color: var(--text); line-height: 1.5; padding: 8px 20px 4px; }
-  .detail-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-  .tag-pill { font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--tag-bg); color: var(--tag-text); cursor: pointer; transition: background 0.1s; }
-  .tag-pill:hover { background: var(--orange-mid); }
-  .tag-pill.orange { background: var(--orange-light); color: var(--orange); }
-  .folder-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; padding: 3px 9px; border-radius: 4px;
-    background: var(--bg-3); color: var(--text-2);
-  }
-  .folder-badge svg { width: 11px; height: 11px; }
-  .detail-context { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 12px 24px 8px; }
+  .detail-context { padding: 16px 24px 4px; }
   [contenteditable] { caret-color: var(--orange); outline: none; }
   [contenteditable].editing { background: var(--bg-2); border-radius: 6px; box-shadow: 0 0 0 2px var(--orange-light); }
 
@@ -1453,26 +1454,22 @@ function openIdea(id, fromScreen) {
 
   const mode = idea.mode || 'summary';
   let summaryHtml = '';
-  const hasAI = !!idea.mode;
   if (mode === 'problems') {
     const probHtml = (idea.problems || []).map((b, i) =>
       `<li><div class="prob-bullet"></div><span class="bullet-text" data-field="problems" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
     const solHtml  = (idea.solutions || []).map((b, i) =>
       `<li><div class="sol-bullet"></div><span class="bullet-text" data-field="solutions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Problems</div><ul class="summary-list">${probHtml}</ul></div>
-    <div class="block"><div class="block-label">Solutions</div><ul class="summary-list">${solHtml}</ul></div></div>`;
+    summaryHtml = `<div class="block"><div class="block-label">Problems</div><ul class="summary-list">${probHtml}</ul></div>
+    <div class="block"><div class="block-label">Solutions</div><ul class="summary-list">${solHtml}</ul></div>`;
   } else if (mode === 'questions' && idea.questions && idea.questions.length) {
     const qHtml = (idea.questions || []).map((b, i) =>
       `<li><div class="q-bullet"></div><span class="bullet-text" data-field="questions" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Questions to explore</div><ul class="summary-list">${qHtml}</ul></div></div>`;
+    summaryHtml = `<div class="block"><div class="block-label">Questions to explore</div><ul class="summary-list">${qHtml}</ul></div>`;
   } else {
     const bulletsHtml = (idea.bullets || []).map((b, i) =>
       `<li><div class="bullet"></div><span class="bullet-text" data-field="bullets" data-i="${i}" data-dtap="1" ondblclick="startEditBullet(this)">${escHtml(b)}</span></li>`).join('');
-    summaryHtml = `<div class="${hasAI ? 'ai-section' : ''}"><div class="block"><div class="block-label">Summary</div><ul class="summary-list">${bulletsHtml}</ul></div></div>`;
+    summaryHtml = `<div class="block"><div class="block-label">Summary</div><ul class="summary-list">${bulletsHtml}</ul></div>`;
   }
-  const tagsHtml = (idea.tags || []).map((t, i) =>
-    `<span class="tag-pill ${i === 0 ? 'orange' : ''}">${escHtml(t)}<button class="tag-x" onclick="removeTag(${i})" aria-label="Remove tag">×</button></span>`).join('') +
-    `<button class="tag-add-btn" onclick="showAddTag()">+</button>`;
 
   const relatedIdeas = (idea.relatedTo || [])
     .map(rid => ideas.find(i => i.id === rid))
@@ -1489,24 +1486,32 @@ function openIdea(id, fromScreen) {
         </div>`).join('')}
     </div>` : '';
 
-  const folderBadge = `
-    <span class="folder-badge" title="Double-tap to edit folder">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      <span class="fb-text" data-dtap="1" ondblclick="startEdit(this,'folder')">${idea.folder ? escHtml(idea.folder) : 'No folder'}</span>
-    </span>`;
+  const existingFoldersList = getFolders();
+  const folderItemsHtml = existingFoldersList.map(f =>
+    `<div class="fcd-item${idea.folder===f?' active':''}" data-folder="${escHtml(f)}">${escHtml(f)}<svg class="fcd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>`
+  ).join('');
+  const folderChip = `
+    <div class="detail-context">
+      <div class="folder-chip${idea.folder?' has-folder':''}" id="detail-folder-chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span class="folder-chip-label" id="detail-folder-label">${idea.folder ? escHtml(idea.folder) : 'No folder'}</span>
+      </div>
+      <div class="folder-chip-drop" id="detail-folder-drop">
+        ${folderItemsHtml}
+        <div class="fcd-new" id="fcd-new-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New folder</div>
+        <input class="fcd-input" id="fcd-input" placeholder="Folder name…" maxlength="30">
+      </div>
+    </div>`;
 
   const transcriptContent = idea.transcript
     ? escHtml(idea.transcript)
     : '<em style="color:var(--text-3);">No transcript — idea was added without voice input</em>';
 
   document.getElementById('detail-content').innerHTML = `
+    ${folderChip}
     <div class="detail-header">
       <div class="detail-title" data-dtap="1" ondblclick="startEdit(this,'title')" title="Double-tap to edit">${escHtml(idea.title)}</div>
       <div class="detail-time">${timeAgo(idea.createdAt)}</div>
-    </div>
-    <div class="detail-context">
-      ${folderBadge}
-      <div class="detail-tags" id="detail-tags">${tagsHtml}</div>
     </div>
     <div class="detail-desc" data-dtap="1" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
     ${summaryHtml}
@@ -1524,10 +1529,53 @@ function openIdea(id, fromScreen) {
   const pinLabel = document.getElementById('more-pin-label');
   if (pinLabel) pinLabel.textContent = idea.pinned ? 'Unpin' : 'Pin';
   closeMoreMenu();
+  initFolderChip();
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-detail').classList.add('active');
   document.getElementById('bottom-nav').style.display = 'flex';
+}
+
+function initFolderChip() {
+  const chip = document.getElementById('detail-folder-chip');
+  const drop = document.getElementById('detail-folder-drop');
+  if (!chip || !drop) return;
+  let isOpen = false;
+
+  const close = () => { drop.classList.remove('open'); isOpen = false; };
+
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    if (isOpen) { close(); return; }
+    drop.classList.add('open'); isOpen = true;
+  });
+  drop.addEventListener('click', e => e.stopPropagation());
+
+  drop.querySelectorAll('.fcd-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idea = ideas.find(i => i.id === currentIdeaId);
+      if (!idea) return;
+      idea.folder = el.dataset.folder === idea.folder ? null : el.dataset.folder;
+      saveIdeas(); renderInbox(); renderFolders();
+      openIdea(currentIdeaId, detailFromScreen);
+    });
+  });
+
+  document.getElementById('fcd-new-btn').addEventListener('click', () => {
+    const inp = document.getElementById('fcd-input');
+    inp.classList.add('show'); inp.focus();
+  });
+
+  document.getElementById('fcd-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && this.value.trim()) {
+      const idea = ideas.find(i => i.id === currentIdeaId);
+      if (idea) { idea.folder = this.value.trim(); saveIdeas(); renderInbox(); renderFolders(); }
+      openIdea(currentIdeaId, detailFromScreen);
+    }
+    if (e.key === 'Escape') close();
+  });
+
+  document.addEventListener('click', close, { once: true });
 }
 
 function togglePinCurrentIdea() {
@@ -1631,52 +1679,12 @@ function toggleTranscript() {
   ch.style.transform = box.classList.contains('open') ? 'rotate(180deg)' : '';
 }
 
-// ─── Tag editing ──────────────────────────────────────────────────────────────
-function removeTag(index) {
-  const idea = ideas.find(i => i.id === currentIdeaId);
-  if (!idea) return;
-  idea.tags = (idea.tags || []).filter((_, i) => i !== index);
-  saveIdeas();
-  openIdea(currentIdeaId, detailFromScreen);
-}
-
-function showAddTag() {
-  const container = document.getElementById('detail-tags');
-  if (!container) return;
-  const addBtn = container.querySelector('.tag-add-btn');
-  if (addBtn) addBtn.style.display = 'none';
-  const input = document.createElement('input');
-  input.className = 'tag-inline-input';
-  input.placeholder = 'New tag…';
-  input.maxLength = 20;
-  container.appendChild(input);
-  input.focus();
-  const commit = () => {
-    const val = input.value.trim().toLowerCase().replace(/\s+/g, '-');
-    if (val) addTag(val);
-    else openIdea(currentIdeaId, detailFromScreen);
-  };
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') openIdea(currentIdeaId, detailFromScreen);
-  });
-  input.addEventListener('blur', commit);
-}
-
-function addTag(text) {
-  const idea = ideas.find(i => i.id === currentIdeaId);
-  if (!idea || !text) return;
-  idea.tags = [...(idea.tags || []), text];
-  saveIdeas();
-  openIdea(currentIdeaId, detailFromScreen);
-}
 
 // Double-tap any detail field to edit it in place (orange caret via CSS)
 function startEdit(el, field) {
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
-  if (field === 'tags') el.textContent = (idea.tags || []).join(', ');
-  else if (field === 'folder') el.textContent = idea.folder || '';
+  if (field === 'folder') el.textContent = idea.folder || '';
   el.contentEditable = 'true';
   el.classList.add('editing');
   el.focus();
@@ -1698,14 +1706,12 @@ function endEdit(el, field) {
   if (field === 'title') idea.title = text;
   else if (field === 'description') idea.description = text;
   else if (field === 'transcript') idea.transcript = text;
-  else if (field === 'tags') idea.tags = text.split(',').map(t => t.trim()).filter(Boolean);
   else if (field === 'folder') idea.folder = text;
   saveIdeas();
   renderInbox();
   renderFolders();
   updateSettingsCount();
-  // tags/folder need a re-render to redraw pills/badge; reopen the detail
-  if (field === 'tags' || field === 'folder') openIdea(currentIdeaId, detailFromScreen);
+  if (field === 'folder') openIdea(currentIdeaId, detailFromScreen);
 }
 
 // Double-tap a summary bullet to edit it (empty text removes the bullet)
