@@ -79,7 +79,7 @@
   .more-item svg { width: 19px; height: 19px; flex-shrink: 0; }
   .more-item.danger { color: #eb5757; }
 
-  .content { flex: 1; overflow-y: auto; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
+  .content { flex: 1; overflow-y: scroll; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
   .content::-webkit-scrollbar { display: none; }
 
   .section-label {
@@ -103,8 +103,8 @@
   .folder-chip.has-folder svg { stroke: var(--orange); }
   .folder-chip-label { font-size: 14px; color: var(--text-2); }
   .folder-chip.has-folder .folder-chip-label { color: var(--orange); }
-  .folder-chip-drop { max-height: 0; overflow: hidden; transition: max-height 0.25s cubic-bezier(.4,0,.2,1); background: rgba(255,255,255,0.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 12px; border: 0.5px solid var(--border); border-top: none; margin-top: 0; position: absolute; left: 0; right: 0; z-index: 30; }
-  .folder-chip-drop.open { max-height: 280px; }
+  .folder-chip-drop { max-height: 0; overflow: hidden; transition: max-height 0.25s cubic-bezier(.4,0,.2,1); background: rgba(255,255,255,0.42); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-radius: 12px; border: 0.5px solid transparent; margin-top: 4px; position: absolute; left: 0; right: 0; z-index: 30; box-shadow: none; }
+  .folder-chip-drop.open { max-height: 280px; border-color: var(--border); box-shadow: 0 8px 28px rgba(0,0,0,0.13); }
   .fcd-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 15px; color: var(--text); cursor: pointer; }
   .fcd-item:not(:last-child) { border-bottom: 0.5px solid var(--border-light); }
   .fcd-item.active { color: var(--orange); font-weight: 500; }
@@ -189,10 +189,12 @@
   .idea-row-wrap { position: relative; overflow: hidden; margin: 0 -8px; border-radius: 6px; }
   .idea-swipe-delete {
     position: absolute; inset: 0;
-    border: none; cursor: pointer; background: #eb5757; color: #fff;
-    display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
+    border: none; cursor: pointer; background: transparent; color: #fff;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 46px;
+    transition: background 0.15s;
   }
-  .idea-swipe-delete svg { width: 32px; height: 32px; }
+  .idea-row-wrap.swipe-active .idea-swipe-delete { background: #eb5757; }
+  .idea-swipe-delete svg { width: 28px; height: 28px; }
   .undo-toast {
     position: absolute; bottom: calc(var(--nav-h) + 16px); left: 50%;
     transform: translateX(-50%) translateY(12px); z-index: 40;
@@ -211,11 +213,12 @@
     display: flex; align-items: flex-start; gap: 14px;
     cursor: pointer; border-radius: 6px;
     padding: 17px 8px;
-    transition: transform 0.3s cubic-bezier(0.34, 1.12, 0.64, 1), background 0.1s;
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.1s;
     touch-action: pan-y;
   }
   .idea-row:hover { background: var(--bg-2); }
   .idea-row.swiped { transform: translateX(-124px); }
+  .idea-row.snap-close { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s; }
   /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
   .idea-row::after {
     content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
@@ -294,7 +297,7 @@
   .detail-desc { font-size: 17px; color: var(--text); line-height: 1.5; padding: 8px 20px 4px; }
   .detail-context { padding: 16px 24px 4px; position: relative; }
   [contenteditable] { caret-color: var(--orange); outline: none; }
-  [contenteditable].editing { background: var(--bg-2); border-radius: 6px; box-shadow: 0 0 0 2px var(--orange-light); }
+  [contenteditable].editing { background: transparent; }
 
   .block { padding: 20px 24px 0; }
   .block-label { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 12px; }
@@ -1256,8 +1259,18 @@ let swipeRow = null, swipeStartX = 0, swipeStartY = 0, swipeDX = 0, swipeActive 
 const SWIPE_OPEN = 124, SWIPE_TRIGGER = 60, SWIPE_TAP = 8, SWIPE_LOCK = 10;
 
 function closeSwipedRows(except) {
-  document.querySelectorAll('.idea-row.swiped').forEach(r => { if (r !== except) r.classList.remove('swiped'); });
+  document.querySelectorAll('.idea-row.swiped').forEach(r => {
+    if (r !== except) {
+      const w = r.closest('.idea-row-wrap');
+      r.classList.add('snap-close');
+      r.classList.remove('swiped');
+      if (w) w.classList.remove('swipe-active');
+      setTimeout(() => r.classList.remove('snap-close'), 460);
+    }
+  });
 }
+
+let swipeScrollEl = null;
 
 function onRowPointerDown(e) {
   if (e.target.closest('.idea-swipe-delete')) return;
@@ -1267,6 +1280,7 @@ function onRowPointerDown(e) {
   swipeRow = row;
   swipeStartX = e.clientX; swipeStartY = e.clientY;
   swipeDX = 0; swipeActive = true; swipeLocked = false;
+  swipeScrollEl = e.currentTarget;
 }
 
 function onRowPointerMove(e) {
@@ -1276,6 +1290,10 @@ function onRowPointerMove(e) {
   if (!swipeLocked) {
     if (Math.abs(dx) > SWIPE_LOCK && Math.abs(dx) > Math.abs(dy)) {
       swipeLocked = true;
+      // lock scrolling on the container while swiping horizontally
+      if (swipeScrollEl) swipeScrollEl.style.overflowY = 'hidden';
+      const wrap = swipeRow.closest('.idea-row-wrap');
+      if (wrap) wrap.classList.add('swipe-active');
     } else if (Math.abs(dy) > SWIPE_LOCK) {
       swipeActive = false; swipeRow = null; return;
     } else { return; }
@@ -1289,30 +1307,54 @@ function onRowPointerMove(e) {
 }
 
 function onRowPointerUp() {
+  // restore scroll
+  if (swipeScrollEl) { swipeScrollEl.style.overflowY = ''; swipeScrollEl = null; }
   if (!swipeRow) return;
   const row = swipeRow;
-  row.style.transition = '';
-  row.style.transform = '';
+  const wrap = row.closest('.idea-row-wrap');
   const wasOpen = row.classList.contains('swiped');
 
   if (swipeLocked) {
     const progress = (wasOpen ? -SWIPE_OPEN : 0) + swipeDX;
     const SNAP = SWIPE_OPEN * 0.3;
     if (!wasOpen && progress <= -SNAP) {
-      row.classList.add('swiped'); haptic(12);
-    } else if (wasOpen && progress >= -SWIPE_OPEN + SNAP) {
+      // snap open — ease-out (default transition)
+      row.classList.remove('snap-close');
+      row.style.transition = '';
+      row.style.transform = '';
+      row.classList.add('swiped');
+      haptic(12);
+    } else if (wasOpen && (progress >= -SWIPE_OPEN + SNAP)) {
+      // snap close — spring overshoot
+      row.classList.add('snap-close');
+      row.style.transition = '';
+      row.style.transform = '';
       row.classList.remove('swiped');
+      if (wrap) wrap.classList.remove('swipe-active');
+      setTimeout(() => row.classList.remove('snap-close'), 460);
     } else if (wasOpen && progress <= -SWIPE_OPEN - SNAP) {
-      const wrap = row.closest('.idea-row-wrap');
-      if (wrap) { row.classList.remove('swiped'); deleteIdeaById(wrap.dataset.id); }
+      row.classList.add('snap-close');
+      row.style.transition = '';
+      row.style.transform = '';
+      row.classList.remove('swiped');
+      if (wrap) { wrap.classList.remove('swipe-active'); deleteIdeaById(wrap.dataset.id); }
+      setTimeout(() => row.classList.remove('snap-close'), 460);
     } else {
-      row.classList.toggle('swiped', wasOpen);
+      // bounce back to current state
+      const goOpen = wasOpen;
+      if (!goOpen) {
+        row.classList.add('snap-close');
+        if (wrap) wrap.classList.remove('swipe-active');
+        setTimeout(() => row.classList.remove('snap-close'), 460);
+      }
+      row.style.transition = '';
+      row.style.transform = '';
+      row.classList.toggle('swiped', goOpen);
     }
   } else if (Math.abs(swipeDX) < SWIPE_TAP) {
     if (document.querySelector('.idea-row.swiped')) {
       closeSwipedRows();
     } else {
-      const wrap = row.closest('.idea-row-wrap');
       if (wrap) {
         row.style.background = 'var(--bg-2)';
         setTimeout(() => {
@@ -1321,6 +1363,14 @@ function onRowPointerUp() {
         }, 80);
       }
     }
+  } else {
+    // released mid-drag without enough velocity — spring back
+    row.classList.add('snap-close');
+    row.style.transition = '';
+    row.style.transform = '';
+    row.classList.toggle('swiped', wasOpen);
+    if (!wasOpen && wrap) wrap.classList.remove('swipe-active');
+    setTimeout(() => row.classList.remove('snap-close'), 460);
   }
   swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
 }
@@ -1574,6 +1624,8 @@ function initFolderChip() {
   chip.addEventListener('click', e => {
     e.stopPropagation();
     if (isOpen) { close(); return; }
+    // close 3-dot menu if open
+    closeMoreMenu();
     drop.classList.add('open'); isOpen = true;
   });
   drop.addEventListener('click', e => e.stopPropagation());
@@ -1620,6 +1672,9 @@ function togglePinCurrentIdea() {
 function toggleMoreMenu(e) {
   if (e) e.stopPropagation();
   const menu = document.getElementById('more-menu');
+  // close folder dropdown if open
+  const drop = document.getElementById('detail-folder-drop');
+  if (drop) drop.classList.remove('open');
   menu.classList.toggle('open');
 }
 function closeMoreMenu() {
