@@ -326,9 +326,9 @@
     max-height: 0; overflow: hidden; overflow-wrap: break-word;
     transition: max-height 0.3s ease, padding 0.3s ease;
     padding: 0 24px; font-size: 15px; color: var(--text-2);
-    line-height: 1.7; font-family: var(--font);
+    line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { max-height: 3000px; padding: 14px 24px; }
+  .transcript-box.open { padding: 14px 24px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1668,8 +1668,8 @@ function openIdea(id, fromScreen) {
     </div>`;
 
   const transcriptContent = idea.transcript
-    ? escHtml(idea.transcript)
-    : '<em style="color:var(--text-3);">No transcript — idea was added without voice input</em>';
+    ? `“${escHtml(idea.transcript)}”`
+    : '<span style="color:var(--text-3);font-style:normal;">No transcript — idea was added without voice input</span>';
 
   document.getElementById('detail-content').innerHTML = `
     ${folderChip}
@@ -1845,8 +1845,18 @@ function closeMoveFolderMenu() {
 function toggleTranscript() {
   const box = document.getElementById('transcript-box');
   const ch = document.getElementById('chevron');
-  box.classList.toggle('open');
-  ch.style.transform = box.classList.contains('open') ? 'rotate(180deg)' : '';
+  const isOpen = box.classList.contains('open');
+  if (isOpen) {
+    box.style.maxHeight = box.scrollHeight + 'px';
+    box.getBoundingClientRect();
+    box.style.maxHeight = '0';
+    box.classList.remove('open');
+  } else {
+    box.classList.add('open');
+    box.style.maxHeight = box.scrollHeight + 'px';
+    box.addEventListener('transitionend', () => { box.style.maxHeight = ''; }, { once: true });
+  }
+  ch.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 
