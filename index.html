@@ -314,10 +314,10 @@
   .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
 
   .transcript-toggle {
-    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px; padding: 10px 0;
     border: none; background: none; cursor: pointer;
     font-family: var(--font); font-size: 12px; color: var(--text-2);
-    width: auto; border-radius: 10px; margin-top: 20px;
+    width: 100%; border-radius: 10px; margin-top: 8px;
   }
   @media (hover: hover) { .transcript-toggle:hover { background: var(--bg-2); } }
   .transcript-toggle svg { width: 14px; height: 14px; }
@@ -328,7 +328,7 @@
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; }
+  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; margin: 0 8px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1862,9 +1862,8 @@ function toggleTranscript() {
       if (box.scrollHeight <= scroller.clientHeight * 0.60) {
         box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        const targetFromTop = scroller.clientHeight * 0.20;
-        const currentFromTop = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-        scroller.scrollBy({ top: currentFromTop - targetFromTop, behavior: 'smooth' });
+        const targetScrollTop = toggle.offsetTop - scroller.clientHeight * 0.20;
+        scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
       }
     }, 320);
   }
