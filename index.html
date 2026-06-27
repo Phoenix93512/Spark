@@ -317,14 +317,15 @@
     display: flex; align-items: center; gap: 8px; padding: 14px 24px;
     border: none; background: none; cursor: pointer;
     font-family: var(--font); font-size: 12px; color: var(--text-2);
-    width: 100%; transition: background 0.1s;
+    width: 100%; transition: background 0.15s; border-radius: 10px;
   }
+  .transcript-toggle.open { background: var(--bg-2); }
   @media (hover: hover) { .transcript-toggle:hover { background: var(--bg-2); } }
   .transcript-toggle svg { width: 14px; height: 14px; }
   .chevron { margin-left: auto; width: 14px !important; height: 14px !important; transition: transform 0.2s; }
   .transcript-box {
     max-height: 0; overflow: hidden; overflow-wrap: break-word;
-    transition: max-height 0.3s ease, padding 0.3s ease;
+    transition: max-height 0.3s ease;
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
@@ -1680,7 +1681,6 @@ function openIdea(id, fromScreen) {
     <div class="detail-desc" data-dtap="1" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
     ${summaryHtml}
     ${relatedHtml}
-    <div class="divider-line"></div>
     <button class="transcript-toggle" onclick="toggleTranscript()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Original transcript
@@ -1845,20 +1845,27 @@ function closeMoveFolderMenu() {
 function toggleTranscript() {
   const box = document.getElementById('transcript-box');
   const ch = document.getElementById('chevron');
+  const toggleBtn = document.querySelector('.transcript-toggle');
   const isOpen = box.classList.contains('open');
   if (isOpen) {
     box.style.maxHeight = box.scrollHeight + 'px';
     box.getBoundingClientRect();
     box.style.maxHeight = '0';
     box.classList.remove('open');
+    if (toggleBtn) toggleBtn.classList.remove('open');
   } else {
     box.classList.add('open');
+    if (toggleBtn) toggleBtn.classList.add('open');
     box.style.maxHeight = box.scrollHeight + 'px';
     box.addEventListener('transitionend', () => {
       box.style.maxHeight = '';
       const scroller = document.getElementById('detail-content');
       const toggle = scroller.querySelector('.transcript-toggle');
-      if (scroller && toggle) {
+      if (!scroller || !toggle) return;
+      const availableHeight = scroller.clientHeight * 0.60;
+      if (box.scrollHeight <= availableHeight) {
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
         const targetFromTop = scroller.clientHeight * 0.40;
         const currentFromTop = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollBy({ top: currentFromTop - targetFromTop, behavior: 'smooth' });
