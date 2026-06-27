@@ -1863,8 +1863,14 @@ function toggleTranscript() {
       const scroller = document.getElementById('detail-content');
       const toggle = document.querySelector('.transcript-toggle');
       if (!scroller || !toggle) return;
-      const delta = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-      scroller.scrollBy({ top: delta, behavior: 'smooth' });
+      if (box.scrollHeight > scroller.clientHeight * 0.7) {
+        // long: scroll toggle to 20% from the top
+        const delta = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top - scroller.clientHeight * 0.20;
+        scroller.scrollBy({ top: delta, behavior: 'smooth' });
+      } else {
+        // short: reveal the full box with minimal scroll
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }, 320);
   }
   ch.style.transform = isOpen ? '' : 'rotate(180deg)';
