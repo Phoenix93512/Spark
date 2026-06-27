@@ -14,7 +14,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
     --bg: #ffffff; --bg-2: #f2f2f7; --bg-3: #e5e5ea;
-    --border: rgba(60,60,67,0.18); --border-strong: rgba(60,60,67,0.29);
+    --border: rgba(60,60,67,0.18); --border-strong: rgba(60,60,67,0.29); --border-light: rgba(60,60,67,0.10);
     --text: #1c1c1e; --text-2: rgba(60,60,67,0.6); --text-3: rgba(60,60,67,0.3);
     --orange: #F46B0E; --orange-light: #FEF0E6; --orange-mid: #FDDBC2;
     --tag-bg: #f2f2f7; --tag-text: rgba(60,60,67,0.6);
@@ -43,21 +43,21 @@
   }
   .topbar-title { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; line-height: 1.1; }
   .icon-btn {
-    width: 32px; height: 32px; border: none; background: none; border-radius: 6px;
+    width: 44px; height: 44px; border: none; background: none; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--text-3); transition: background 0.15s, color 0.15s;
+    cursor: pointer; color: var(--text-2); transition: background 0.15s, color 0.15s;
   }
   .icon-btn:hover { background: var(--bg-2); color: var(--text); }
-  .icon-btn svg { width: 18px; height: 18px; }
-  .icon-btn-search { width: 40px; height: 40px; }
+  .icon-btn svg { width: 22px; height: 22px; }
+  .icon-btn-search { width: 44px; height: 44px; }
   .icon-btn-search svg { width: 26px; height: 26px; }
   .back-btn {
     display: flex; align-items: center; gap: 4px; border: none; background: none;
-    cursor: pointer; color: var(--text-3); font-size: 13px; font-family: var(--font);
+    cursor: pointer; color: var(--text-2); font-size: 17px; font-family: var(--font);
     padding: 4px 0; transition: color 0.15s;
   }
   .back-btn:hover { color: var(--text); }
-  .back-btn svg { width: 16px; height: 16px; }
+  .back-btn svg { width: 20px; height: 20px; }
 
   /* Note 3-dot menu */
   .more-menu {
@@ -79,7 +79,7 @@
   .more-item svg { width: 19px; height: 19px; flex-shrink: 0; }
   .more-item.danger { color: #eb5757; }
 
-  .content { flex: 1; overflow-y: scroll; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
+  .content { flex: 1; overflow-y: scroll; overscroll-behavior: contain; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
   .content::-webkit-scrollbar { display: none; }
 
   .section-label {
@@ -103,7 +103,7 @@
   .folder-chip.has-folder svg { stroke: var(--orange); }
   .folder-chip-label { font-size: 14px; color: var(--text-2); }
   .folder-chip.has-folder .folder-chip-label { color: var(--orange); }
-  .folder-chip-drop { max-height: 0; overflow: hidden; transition: max-height 0.25s cubic-bezier(.4,0,.2,1); background: rgba(255,255,255,0.42); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-radius: 12px; border: 0.5px solid transparent; margin-top: 4px; position: absolute; left: 0; right: 0; z-index: 30; box-shadow: none; }
+  .folder-chip-drop { max-height: 0; overflow: hidden; transition: max-height 0.25s cubic-bezier(.4,0,.2,1); background: rgba(255,255,255,0.42); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-radius: 12px; border: 0.5px solid transparent; margin-top: 4px; position: absolute; left: 24px; right: 24px; z-index: 30; box-shadow: none; }
   .folder-chip-drop.open { max-height: 280px; border-color: var(--border); box-shadow: 0 8px 28px rgba(0,0,0,0.13); }
   .fcd-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-size: 15px; color: var(--text); cursor: pointer; }
   .fcd-item:not(:last-child) { border-bottom: 0.5px solid var(--border-light); }
@@ -211,7 +211,7 @@
   .idea-row {
     position: relative; z-index: 1; background: var(--bg);
     display: flex; align-items: flex-start; gap: 14px;
-    cursor: pointer; border-radius: 6px;
+    cursor: pointer;
     padding: 17px 8px;
     transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.1s;
     touch-action: pan-y;
@@ -219,10 +219,9 @@
   .idea-row:hover { background: var(--bg-2); }
   .idea-row.swiped { transform: translateX(-124px); }
   .idea-row.snap-close { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s; }
-  /* Centered, ~85% width, 2px, lighter divider (not edge-to-edge) */
   .idea-row::after {
-    content: ''; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-    width: 90%; height: 2px; border-radius: 2px; background: rgba(60,60,67,0.09);
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 0.5px; background: var(--border-light);
   }
   .idea-row.swiped::after { display: none; }
   .idea-row-wrap:last-child .idea-row::after,
@@ -284,9 +283,9 @@
   .nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 4px; border: none; background: none; cursor: pointer; padding: 0;
-    font-family: var(--font); font-size: 10px; color: var(--text-3); transition: color 0.15s;
+    font-family: var(--font); font-size: 11px; color: var(--text-2); transition: color 0.15s;
   }
-  .nav-item svg { width: 20px; height: 20px; }
+  .nav-item svg { width: 24px; height: 24px; }
   .nav-item.active { color: var(--orange); }
   .nav-item:hover { color: var(--text-2); }
 
@@ -376,7 +375,7 @@
 
   /* Settings */
   .settings-section { padding: 20px 24px 0; }
-  .settings-label { font-size: 11px; font-weight: 500; color: var(--text-3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 12px; }
+  .settings-label { font-size: 13px; font-weight: 500; color: var(--text-2); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 12px; }
   .settings-row {
     display: flex; align-items: center; justify-content: space-between;
     padding: 13px 0; border-bottom: 1px solid var(--border); gap: 12px;
@@ -474,7 +473,7 @@
   #overlay-processing.loading .proc-scroll,
   #overlay-processing.loading .btn-row { display: none; }
   .proc-scroll {
-    width: 100%; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+    width: 100%; flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 18px;
   }
   .proc-scroll::-webkit-scrollbar { display: none; }
 
@@ -808,12 +807,12 @@
   <div class="screen" id="screen-detail">
     <div class="topbar">
       <button class="back-btn" id="detail-back-btn" onclick="goBackFromDetail()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>
         <span id="detail-back-label">Home</span>
       </button>
       <div style="display:flex; align-items:center; gap:2px; position:relative;">
         <button class="icon-btn" onclick="shareCurrentIdea()" title="Share">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5"/></svg>
         </button>
         <button class="icon-btn" id="more-btn" onclick="toggleMoreMenu(event)" title="More">
           <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
@@ -845,14 +844,14 @@
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" id="bottom-nav">
     <button class="nav-item active" id="nav-home" onclick="showNavScreen('screen-inbox')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
     <button class="nav-create" id="nav-create-btn" aria-label="New idea">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <button class="nav-item" id="nav-folders" onclick="showNavScreen('screen-folders')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       Folders
     </button>
   </nav>
@@ -1382,7 +1381,10 @@ function setupSwipe() {
     el.addEventListener('pointerdown', onRowPointerDown);
     el.addEventListener('pointermove', onRowPointerMove);
     el.addEventListener('pointerup', onRowPointerUp);
-    el.addEventListener('pointercancel', onRowPointerUp);
+    el.addEventListener('pointercancel', () => {
+      if (swipeScrollEl) { swipeScrollEl.style.overflowY = ''; swipeScrollEl = null; }
+      swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
+    });
   });
   // tapping anywhere outside a row closes an open swipe
   document.addEventListener('pointerdown', (e) => {
