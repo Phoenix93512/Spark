@@ -313,8 +313,9 @@
 
   .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
 
+  .bounce-pad { min-height: calc(100% + 1px); }
   .transcript-toggle {
-    display: flex; align-items: center; gap: 8px; padding: 10px 0;
+    display: flex; align-items: center; gap: 8px; padding: 10px 24px;
     border: none; background: none; cursor: pointer;
     font-family: var(--font); font-size: 12px; color: var(--text-2);
     width: 100%; border-radius: 10px; margin-top: 8px;
@@ -328,7 +329,7 @@
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; margin: 0 8px; }
+  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1672,6 +1673,7 @@ function openIdea(id, fromScreen) {
     : '<span style="color:var(--text-3);font-style:normal;">No transcript — idea was added without voice input</span>';
 
   document.getElementById('detail-content').innerHTML = `
+    <div class="bounce-pad">
     ${folderChip}
     <div class="detail-header">
       <div class="detail-title" data-dtap="1" ondblclick="startEdit(this,'title')" title="Double-tap to edit">${escHtml(idea.title)}</div>
@@ -1688,6 +1690,7 @@ function openIdea(id, fromScreen) {
     </button>
     <div class="transcript-box" id="transcript-box" data-dtap="1" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${transcriptContent}</div>
     <div style="height: 40px;"></div>
+    </div>
   `;
 
   // reflect pin state in the more-menu
@@ -1851,6 +1854,7 @@ function toggleTranscript() {
     box.getBoundingClientRect();
     box.style.maxHeight = '0';
     box.classList.remove('open');
+    document.getElementById('detail-content').scrollTo({ top: 0, behavior: 'smooth' });
   } else {
     box.classList.add('open');
     box.style.maxHeight = box.scrollHeight + 'px';
@@ -1859,12 +1863,8 @@ function toggleTranscript() {
       const scroller = document.getElementById('detail-content');
       const toggle = document.querySelector('.transcript-toggle');
       if (!scroller || !toggle) return;
-      if (box.scrollHeight <= scroller.clientHeight * 0.60) {
-        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else {
-        const targetScrollTop = toggle.offsetTop - scroller.clientHeight * 0.20;
-        scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
-      }
+      const delta = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      scroller.scrollBy({ top: delta, behavior: 'smooth' });
     }, 320);
   }
   ch.style.transform = isOpen ? '' : 'rotate(180deg)';
