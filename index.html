@@ -328,7 +328,7 @@
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { max-height: none; padding: 14px 20px; background: var(--bg-2); border-radius: 14px; margin: 0 4px; }
+  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1680,6 +1680,7 @@ function openIdea(id, fromScreen) {
     <div class="detail-desc" data-dtap="1" ondblclick="startEdit(this,'description')" title="Double-tap to edit">${escHtml(idea.description)}</div>
     ${summaryHtml}
     ${relatedHtml}
+    <div class="divider-line"></div>
     <button class="transcript-toggle" onclick="toggleTranscript()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Original transcript
@@ -1861,7 +1862,7 @@ function toggleTranscript() {
       if (box.scrollHeight <= scroller.clientHeight * 0.60) {
         box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        const targetFromTop = scroller.clientHeight * 0.30;
+        const targetFromTop = scroller.clientHeight * 0.70;
         const currentFromTop = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollBy({ top: currentFromTop - targetFromTop, behavior: 'smooth' });
       }
