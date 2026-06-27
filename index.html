@@ -81,6 +81,7 @@
 
   .content { flex: 1; overflow-y: scroll; overscroll-behavior: contain; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
   .content::-webkit-scrollbar { display: none; }
+  .content::after { content: ''; display: block; min-height: 100%; }
 
   .section-label {
     font-size: 18px; font-weight: 600; color: var(--text-2);
@@ -221,7 +222,7 @@
   .idea-row.snap-close { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s; }
   .idea-row::after {
     content: ''; position: absolute; left: 0; right: 0; bottom: 0;
-    height: 0.5px; background: var(--border-light);
+    height: 1px; background: var(--border-light);
   }
   .idea-row.swiped::after { display: none; }
   .idea-row-wrap:last-child .idea-row::after,
@@ -981,52 +982,61 @@ function seedDemoIdeas(force) {
   ideas = ideas.filter(i => !isDemoIdea(i)); // clear old demos before re-seeding
   const DAY = 86400000;
   const now = Date.now();
-  const mk = (daysAgo, hour, title, description, folder, tags, bullets) => ({
+  const mk = (daysAgo, hour, title, description, folder, tags, bullets, transcript) => ({
     id: 'demo-' + Math.random().toString(36).slice(2, 9),
     title, description, folder, tags, bullets,
     createdAt: now - daysAgo * DAY - (hour || 0) * 3600000,
-    transcript: '', relatedTo: [], pinned: false, isDemo: true
+    transcript: transcript || '', relatedTo: [], pinned: false, isDemo: true
   });
   const demos = [
     // Today
     mk(0, 2, 'Voice-first idea capture app',
       'A frictionless way to capture a thought the instant it sparks, before it slips away — speak it and it organizes itself.',
       'Products', ['app', 'voice'],
-      ['Capture ideas by voice with a single tap', 'Auto-tag and file into the right folder', 'Surface connections to past ideas']),
+      ['Capture ideas by voice with a single tap', 'Auto-tag and file into the right folder', 'Surface connections to past ideas'],
+      'So I had this idea for an app that lets you capture ideas just by speaking. You tap once, talk, and it records everything you say. Then the AI pulls out the title, tags, folder — all of it. The whole point is zero friction. I keep losing ideas because by the time I open my notes app and start typing the thought is already gone. It should feel like leaving yourself a voicemail except it actually organizes itself.'),
     mk(0, 6, 'Critique campus wayfinding signage',
       'The arrows in the science building point the wrong way at the east stairwell — redesign the whole floor system.',
       'Design', ['ux', 'signage'],
-      ['Audit every junction for ambiguity', 'Test arrow + landmark combos', 'Mock up a consistent color-per-wing system']),
+      ['Audit every junction for ambiguity', 'Test arrow + landmark combos', 'Mock up a consistent color-per-wing system'],
+      'Okay so I was trying to find the east stairwell in the science building and the arrows are just completely wrong — they point you in the wrong direction. Someone needs to fix the whole floor signage system. Maybe color-code it by wing so it\'s actually intuitive instead of just arrows pointing everywhere.'),
     // This Week
     mk(2, 0, 'Pop-up coffee cart',
       'Mobile espresso cart for campus events with QR ordering so the line never backs up.',
       'Business', ['coffee', 'popup'],
-      ['Bike-towable cart footprint', 'QR menu + pay before pickup', 'Partner with student orgs for events']),
+      ['Bike-towable cart footprint', 'QR menu + pay before pickup', 'Partner with student orgs for events'],
+      'What if there was a coffee cart you could bring to campus events? Like a proper bike-towable espresso setup. You\'d have a QR code people scan to order on their phone and it\'s ready when they walk up — no line. Could partner with student orgs who need a catering option for their events. The margins on espresso are actually pretty good.'),
     mk(4, 0, 'Risograph zine for thesis show',
       'A two-color riso zine documenting the studio process, handed out at the opening.',
       'Personal', ['print', 'zine'],
-      ['Fluorescent pink + blue spreads', '16 pages, saddle stitch', 'Edition of 100']),
+      ['Fluorescent pink + blue spreads', '16 pages, saddle stitch', 'Edition of 100'],
+      'For the thesis show I want to make a riso-printed zine documenting the whole process. Two colors, fluorescent pink and blue. Around sixteen pages, saddle stitched. Print a hundred copies and just hand them out at the opening.'),
     mk(5, 0, 'Portfolio site dark mode',
       'Auto dark mode that respects system settings and keeps the work images readable.',
       'Design', ['web', 'portfolio'],
-      ['Tokenize colors for easy theming', 'Dim image borders, not the work', 'Remember manual override']),
+      ['Tokenize colors for easy theming', 'Dim image borders, not the work', 'Remember manual override'],
+      'My portfolio site needs a proper dark mode. It should follow the system setting automatically but I also want a manual toggle. The tricky part is keeping the work images readable — I don\'t want to dim the actual design work, just the chrome around it. Probably needs tokenized colors from the start so theming is clean.'),
     // This Month
     mk(11, 0, 'Sustainable packaging for local honey',
       'Refillable jar program with a paper-seal label so the brand feels handmade, not mass-produced.',
       'Business', ['packaging', 'sustainability'],
-      ['Refill discount to drive returns', 'Seed-paper hang tags', 'One illustration per harvest season']),
+      ['Refill discount to drive returns', 'Seed-paper hang tags', 'One illustration per harvest season'],
+      'So for the honey packaging — what if it was refillable? You bring back the jar and get a discount on your next fill. The label could be seed paper so after you peel it off you can actually plant it. And each harvest season gets its own illustration, makes it feel handmade and worth keeping.'),
     mk(16, 0, 'Generative type poster series',
       'Code-driven posters where the same headline distorts differently each run.',
       'Design', ['type', 'generative'],
-      ['Variable font weight by noise field', 'Export print-ready SVGs', 'Series of 12, one per month']),
+      ['Variable font weight by noise field', 'Export print-ready SVGs', 'Series of 12, one per month'],
+      'I want to make a series of posters where the same headline renders differently every single time. Using a variable font with a noise field driving the weight so each print is unique. Export them as print-ready SVGs. Could do twelve — one per month.'),
     mk(21, 0, 'Habit tracker with friction',
       'A tracker that makes skipping a habit slightly annoying instead of breaking the streak guilt-free.',
       'Products', ['app', 'habits'],
-      ['Tiny delay before "skip"', 'Streaks that bend, not snap', 'Weekly reflection prompt']),
+      ['Tiny delay before "skip"', 'Streaks that bend, not snap', 'Weekly reflection prompt'],
+      'What if a habit tracker made it slightly annoying to skip instead of just letting you off the hook? Like a small deliberate delay before the skip button becomes tappable. And streaks that bend — they don\'t reset to zero immediately, they degrade over a few days. Plus a weekly reflection prompt so you actually think about what\'s working and what isn\'t.'),
     mk(26, 0, 'Short film about commuting',
       'A quiet 4-minute film shot entirely from bus windows across one week.',
       'Personal', ['film', 'video'],
-      ['Same seat, different days', 'Ambient sound only', 'Color-grade toward dusk'])
+      ['Same seat, different days', 'Ambient sound only', 'Color-grade toward dusk'],
+      'I want to shoot a short film from bus windows. Just four minutes or so, same seat on different days of the week. All ambient sound — no music, no voiceover. Color grade everything toward dusk even when it\'s shot in the morning.')
   ];
   ideas = [...demos, ...ideas]; // demos sit alongside any real ideas
   saveIdeas();
