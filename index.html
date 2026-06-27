@@ -48,6 +48,7 @@
     cursor: pointer; color: var(--text-2); transition: background 0.15s, color 0.15s;
   }
   .icon-btn:hover { background: var(--bg-2); color: var(--text); }
+  .icon-btn:active { transform: scale(0.88); opacity: 0.7; transition: transform 0.06s ease, opacity 0.06s ease; }
   .icon-btn svg { width: 22px; height: 22px; }
   .icon-btn-search { width: 44px; height: 44px; }
   .icon-btn-search svg { width: 26px; height: 26px; }
@@ -81,7 +82,8 @@
 
   .content { flex: 1; overflow-y: scroll; overscroll-behavior: contain; padding: 0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px); -webkit-overflow-scrolling: touch; }
   .content::-webkit-scrollbar { display: none; }
-  .content::after { content: ''; display: block; min-height: 100%; }
+  .content::after { content: ''; display: block; height: 1px; min-height: 100%; }
+  .proc-scroll::after { content: ''; display: block; height: 1px; min-height: 100%; }
 
   .section-label {
     font-size: 18px; font-weight: 600; color: var(--text-2);
@@ -217,7 +219,7 @@
     transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.1s;
     touch-action: pan-y;
   }
-  .idea-row:hover { background: var(--bg-2); }
+  @media (hover: hover) { .idea-row:hover { background: var(--bg-2); } }
   .idea-row.swiped { transform: translateX(-124px); }
   .idea-row.snap-close { transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.1s; }
   .idea-row::after {
@@ -289,6 +291,7 @@
   .nav-item svg { width: 24px; height: 24px; }
   .nav-item.active { color: var(--orange); }
   .nav-item:hover:not(.active) { color: var(--text); }
+  .nav-item:active { transform: scale(0.84); opacity: 0.7; transition: transform 0.06s ease, opacity 0.06s ease; }
 
   /* Detail */
   .detail-header { padding: 4px 24px 0; flex-shrink: 0; }
@@ -953,7 +956,7 @@ let audioChunks = [];
 let recTimerInterval = null;
 let recSeconds = 0;
 let activeNavScreen = 'screen-inbox';
-let collapsedSections = new Set();
+let collapsedSections = new Set(JSON.parse(localStorage.getItem('spark-collapsed') || '[]'));
 let currentSaveMode = 'summary';
 
 // ─── Feedback: best-effort vibrate (no-op on iOS) + tiny orange pulse ────────────
@@ -1067,6 +1070,7 @@ function init() {
   updateSettingsCount();
   setupCreateButton();
   setupSwipe();
+  setupSwipeBack();
 }
 init();
 
@@ -1174,6 +1178,7 @@ function goBackFromDetail() {
 function toggleSection(name) {
   if (collapsedSections.has(name)) collapsedSections.delete(name);
   else collapsedSections.add(name);
+  localStorage.setItem('spark-collapsed', JSON.stringify([...collapsedSections]));
   renderInbox();
 }
 function collapsibleLabel(name) {
@@ -1425,10 +1430,22 @@ function deleteIdeaById(id) {
   const index = ideas.findIndex(i => i.id === id);
   if (index === -1) return;
   lastDeleted = { idea: ideas[index], index };
-  ideas = ideas.filter(i => i.id !== id);
-  saveIdeas();
-  refreshVisibleList();
-  showUndoToast();
+  const wrap = document.querySelector(`.idea-row-wrap[data-id="${id}"]`);
+  if (wrap) {
+    wrap.style.overflow = 'hidden';
+    wrap.style.maxHeight = wrap.offsetHeight + 'px';
+    wrap.getBoundingClientRect(); // force reflow
+    wrap.style.transition = 'max-height 0.28s ease, opacity 0.22s ease';
+    wrap.style.maxHeight = '0';
+    wrap.style.opacity = '0';
+    setTimeout(commit, 290);
+  } else { commit(); }
+  function commit() {
+    ideas = ideas.filter(i => i.id !== id);
+    saveIdeas();
+    refreshVisibleList();
+    showUndoToast();
+  }
 }
 
 function undoDelete() {
@@ -1460,6 +1477,58 @@ function hideUndoToast() {
 function renderFolders() {
   const container = document.getElementById('folders-content');
   renderFoldersScreen(container, null, null);
+}
+
+function setupSwipeBack() {
+  const screen = document.getElementById('screen-detail');
+  const EDGE = 28;
+  const THRESHOLD = 0.38;
+  let active = false, startX = 0, startY = 0, dx = 0, locked = false;
+
+  screen.addEventListener('pointerdown', e => {
+    if (!screen.classList.contains('active')) return;
+    if (e.clientX > EDGE) return;
+    active = true; locked = false; dx = 0;
+    startX = e.clientX; startY = e.clientY;
+    screen.setPointerCapture(e.pointerId);
+  }, { passive: true });
+
+  screen.addEventListener('pointermove', e => {
+    if (!active) return;
+    const curDX = e.clientX - startX;
+    const curDY = e.clientY - startY;
+    if (!locked) {
+      if (Math.abs(curDY) > Math.abs(curDX) + 4) { active = false; screen.style.transform = ''; return; }
+      locked = true;
+    }
+    dx = Math.max(0, curDX);
+    screen.style.transform = `translateX(${dx}px)`;
+    screen.style.transition = 'none';
+  }, { passive: true });
+
+  function finish(commit) {
+    if (!active) return;
+    active = false; locked = false;
+    screen.style.transition = 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    if (commit) {
+      screen.style.transform = `translateX(${window.innerWidth}px)`;
+      setTimeout(() => { screen.style.transform = ''; screen.style.transition = ''; goBackFromDetail(); }, 290);
+    } else {
+      screen.style.transform = '';
+      setTimeout(() => { screen.style.transition = ''; }, 300);
+    }
+    dx = 0;
+  }
+
+  screen.addEventListener('pointerup', e => {
+    if (!active) return;
+    finish(dx / window.innerWidth >= THRESHOLD);
+  });
+
+  screen.addEventListener('pointercancel', () => {
+    if (!active) return;
+    finish(false);
+  });
 }
 
 function renderFoldersScreen(container, filterFolder, title) {
@@ -1934,15 +2003,52 @@ function runSearch(q) {
   renderSearchResults(scored.map(x => x.idea));
 }
 
+function highlightText(text, query) {
+  if (!query || !text) return escHtml(text || '');
+  const lower = text.toLowerCase();
+  const lowerQ = query.toLowerCase().trim();
+  if (!lowerQ) return escHtml(text);
+  let out = '', i = 0;
+  while (i < text.length) {
+    const idx = lower.indexOf(lowerQ, i);
+    if (idx === -1) { out += escHtml(text.slice(i)); break; }
+    out += escHtml(text.slice(i, idx));
+    out += `<mark style="background:var(--orange-light);color:var(--orange);border-radius:2px;padding:0 1px;">${escHtml(text.slice(idx, idx + lowerQ.length))}</mark>`;
+    i = idx + lowerQ.length;
+  }
+  return out;
+}
+
 function renderSearchResults(results) {
   const container = document.getElementById('search-content');
+  const q = (document.getElementById('search-input')?.value || '').trim();
   if (results.length === 0) {
     container.innerHTML = `<div class="empty-state" style="padding:40px 0"><div class="empty-title">No matching ideas</div><div class="empty-sub">Try different words or add more ideas</div></div>`;
     return;
   }
   const now = Date.now();
   let html = `<div class="section-label">${results.length} result${results.length !== 1 ? 's' : ''}</div>`;
-  results.forEach(idea => { html += ideaRowHTML(idea, now, 'screen-inbox'); });
+  results.forEach(idea => {
+    const tags = (idea.tags || []).slice(0, 2);
+    const firstTag = tags[0] || '';
+    const from = 'screen-inbox';
+    html += `<div class="idea-row-wrap" data-id="${idea.id}" data-from="${from}">
+      <button class="idea-swipe-delete" aria-label="Delete" onclick="deleteIdeaById('${idea.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+      <div class="idea-row">
+        <div class="idea-body">
+          <div class="idea-title">${highlightText(idea.title, q)}</div>
+          <div class="idea-desc">${highlightText(idea.description, q)}</div>
+          <div class="idea-meta">
+            ${firstTag ? `<span class="tag orange">${escHtml(firstTag)}</span>` : ''}
+            ${tags.slice(1).map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+            <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
   container.innerHTML = html;
 }
 
