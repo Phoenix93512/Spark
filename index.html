@@ -1269,8 +1269,8 @@ function ideaRowHTML(idea, now, fromScreen) {
 }
 
 // ─── Swipe-left to delete on idea rows ──────────────────────────────────────────
-let swipeRow = null, swipeStartX = 0, swipeStartY = 0, swipeDX = 0, swipeActive = false, swipeLocked = false, swipeDownAt = 0;
-const SWIPE_OPEN = 124, SWIPE_TRIGGER = 60, SWIPE_TAP = 8, SWIPE_LOCK = 10;
+let swipeRow = null, swipeStartX = 0, swipeStartY = 0, swipeDX = 0, swipeActive = false, swipeLocked = false;
+const SWIPE_OPEN = 124, SWIPE_TRIGGER = 60, SWIPE_LOCK = 10;
 
 function closeSwipedRows(except) {
   document.querySelectorAll('.idea-row.swiped').forEach(r => {
@@ -1293,7 +1293,7 @@ function onRowPointerDown(e) {
   closeSwipedRows(row);
   swipeRow = row;
   swipeStartX = e.clientX; swipeStartY = e.clientY;
-  swipeDX = 0; swipeActive = true; swipeLocked = false; swipeDownAt = Date.now();
+  swipeDX = 0; swipeActive = true; swipeLocked = false;
   swipeScrollEl = e.currentTarget;
 }
 
@@ -1365,19 +1365,7 @@ function onRowPointerUp() {
       row.style.transform = '';
       row.classList.toggle('swiped', goOpen);
     }
-  } else if (Math.abs(swipeDX) < SWIPE_TAP && Date.now() - swipeDownAt < 80) {
-    if (document.querySelector('.idea-row.swiped')) {
-      closeSwipedRows();
-    } else {
-      if (wrap) {
-        row.style.background = 'var(--bg-2)';
-        setTimeout(() => {
-          row.style.background = '';
-          openIdea(wrap.dataset.id, wrap.dataset.from);
-        }, 80);
-      }
-    }
-  } else {
+  } else if (swipeLocked) {
     // released mid-drag without enough velocity — spring back
     row.classList.add('snap-close');
     row.style.transition = '';
@@ -1399,6 +1387,17 @@ function setupSwipe() {
     el.addEventListener('pointercancel', () => {
       if (swipeScrollEl) { swipeScrollEl.style.overflowY = ''; swipeScrollEl = null; }
       swipeActive = false; swipeRow = null; swipeDX = 0; swipeLocked = false;
+    });
+    el.addEventListener('click', e => {
+      if (e.target.closest('.idea-swipe-delete')) return;
+      const wrap = e.target.closest('.idea-row-wrap');
+      if (!wrap) return;
+      if (document.querySelector('.idea-row.swiped')) { closeSwipedRows(); return; }
+      const row = wrap.querySelector('.idea-row');
+      if (row) {
+        row.style.background = 'var(--bg-2)';
+        setTimeout(() => { row.style.background = ''; openIdea(wrap.dataset.id, wrap.dataset.from); }, 80);
+      }
     });
   });
   // tapping anywhere outside a row closes an open swipe
