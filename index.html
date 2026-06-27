@@ -299,7 +299,7 @@
   .detail-header { padding: 4px 24px 0; flex-shrink: 0; }
   .detail-title { font-size: 34px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 8px; }
   .detail-time { font-size: 13px; color: var(--text-3); }
-  .detail-desc { font-size: 17px; color: var(--text); line-height: 1.5; padding: 8px 20px 4px; }
+  .detail-desc { font-size: 17px; color: var(--text); line-height: 1.5; padding: 8px 24px 4px; }
   .detail-context { padding: 16px 24px 4px; position: relative; }
   [contenteditable] { caret-color: var(--orange); outline: none; }
   [contenteditable].editing { background: transparent; }
@@ -311,13 +311,13 @@
   .bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); margin-top: 9px; flex-shrink: 0; }
   .bullet-text { flex: 1; min-width: 0; }
 
-  .divider-line { height: 1px; background: var(--border); margin: 20px 0 0; }
+  .divider-line { height: 1px; background: var(--border); margin: 20px 24px 0; }
 
   .transcript-toggle {
     display: flex; align-items: center; gap: 8px; padding: 10px 14px;
     border: none; background: none; cursor: pointer;
     font-family: var(--font); font-size: 12px; color: var(--text-2);
-    width: auto; border-radius: 10px; margin-top: 28px;
+    width: auto; border-radius: 10px; margin-top: 20px;
   }
   @media (hover: hover) { .transcript-toggle:hover { background: var(--bg-2); } }
   .transcript-toggle svg { width: 14px; height: 14px; }
@@ -1862,7 +1862,7 @@ function toggleTranscript() {
       if (box.scrollHeight <= scroller.clientHeight * 0.60) {
         box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        const targetFromTop = scroller.clientHeight * 0.70;
+        const targetFromTop = scroller.clientHeight * 0.20;
         const currentFromTop = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollBy({ top: currentFromTop - targetFromTop, behavior: 'smooth' });
       }
