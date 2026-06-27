@@ -1856,7 +1856,13 @@ function toggleTranscript() {
     box.style.maxHeight = box.scrollHeight + 'px';
     box.addEventListener('transitionend', () => {
       box.style.maxHeight = '';
-      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const scroller = document.getElementById('detail-content');
+      const toggle = scroller.querySelector('.transcript-toggle');
+      if (scroller && toggle) {
+        const targetFromTop = scroller.clientHeight * 0.40;
+        const currentFromTop = toggle.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollBy({ top: currentFromTop - targetFromTop, behavior: 'smooth' });
+      }
     }, { once: true });
   }
   ch.style.transform = isOpen ? '' : 'rotate(180deg)';
