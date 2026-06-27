@@ -328,7 +328,7 @@
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { padding: 14px 24px; }
+  .transcript-box.open { max-height: none; padding: 14px 24px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1854,7 +1854,10 @@ function toggleTranscript() {
   } else {
     box.classList.add('open');
     box.style.maxHeight = box.scrollHeight + 'px';
-    box.addEventListener('transitionend', () => { box.style.maxHeight = ''; }, { once: true });
+    box.addEventListener('transitionend', () => {
+      box.style.maxHeight = '';
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, { once: true });
   }
   ch.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
