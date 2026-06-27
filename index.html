@@ -980,10 +980,13 @@ function demoEnabled() {
 function isDemoIdea(i) {
   return i.isDemo === true || (typeof i.id === 'string' && i.id.startsWith('demo-'));
 }
+const DEMO_VERSION = 3;
+
 function seedDemoIdeas(force) {
   if (!demoEnabled()) return;
   const hasDemos = ideas.some(isDemoIdea);
-  if (hasDemos && !force) return;        // demos already present — leave them
+  const storedVersion = parseInt(localStorage.getItem('spark-demo-version') || '0');
+  if (hasDemos && !force && storedVersion >= DEMO_VERSION) return;
   ideas = ideas.filter(i => !isDemoIdea(i)); // clear old demos before re-seeding
   const DAY = 86400000;
   const now = Date.now();
@@ -1043,8 +1046,9 @@ function seedDemoIdeas(force) {
       ['Same seat, different days', 'Ambient sound only', 'Color-grade toward dusk'],
       'I want to shoot a short film from bus windows. Just four minutes or so, same seat on different days of the week. All ambient sound — no music, no voiceover. Color grade everything toward dusk even when it\'s shot in the morning.')
   ];
-  ideas = [...demos, ...ideas]; // demos sit alongside any real ideas
+  ideas = [...demos, ...ideas];
   saveIdeas();
+  localStorage.setItem('spark-demo-version', DEMO_VERSION);
 }
 
 function toggleDemoIdeas() {
