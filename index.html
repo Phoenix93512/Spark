@@ -231,6 +231,15 @@
   .idea-row.swiped::after { display: none; }
   .idea-row-wrap:last-child .idea-row::after,
   .idea-row-wrap:has(+ .section-label) .idea-row::after { display: none; }
+  .rank-badge {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--text-3); background: var(--bg-2);
+    margin-top: 1px;
+  }
+  .rank-badge.rank-1 { background: var(--orange); color: #fff; }
+  .rank-badge.rank-2 { background: var(--orange-mid); color: var(--orange); }
+  .rank-badge.rank-3 { background: var(--orange-light); color: var(--orange); }
   .idea-body { flex: 1; min-width: 0; }
   .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.2px; }
   .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1303,8 +1312,7 @@ function renderInbox() {
       if (!collapsedSections.has('Pinned')) pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
     }
     html += `<div class="section-label" style="cursor:default;">Top Ideas</div>`;
-    rest.filter(i => !isDemoIdea(i)).sort((a, b) => b.rank - a.rank).forEach(idea => { html += ideaRowHTML(idea, now); });
-    rest.filter(i => isDemoIdea(i)).forEach(idea => { html += ideaRowHTML(idea, now); });
+    rest.sort((a, b) => b.rank - a.rank).forEach(idea => { html += ideaRowHTML(idea, now); });
     container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing to show</div></div>`;
     return;
   }
@@ -1677,7 +1685,7 @@ function renderFoldersScreen(container, filterFolder, title) {
   }
 
   const activeCount = ideas.filter(i => i.status !== 'completed').length;
-  const rankedCount = ideas.filter(i => i.status !== 'completed' && !isDemoIdea(i)).length;
+  const rankedCount = ideas.filter(i => i.status !== 'completed').length;
   const completedCount = ideas.filter(i => i.status === 'completed').length;
 
   let html = '<div class="section-label">All ideas</div>';
@@ -1735,8 +1743,10 @@ function rankedRowHTML(idea, now, position, total) {
   const tags = (idea.tags || []).slice(0, 2);
   const upDisabled = position === 0 ? ' disabled' : '';
   const downDisabled = position === total - 1 ? ' disabled' : '';
+  const rankNum = position < 3 ? `<div class="rank-badge rank-${position + 1}">${position + 1}</div>` : '';
   return `<div class="idea-row-wrap" data-id="${idea.id}">
     <div class="idea-row" onclick="openIdea('${idea.id}', 'screen-folder-detail')">
+      ${rankNum}
       <div class="idea-body">
         <div class="idea-title">${escHtml(idea.title)}</div>
         <div class="idea-desc">${escHtml(idea.description)}</div>
@@ -1876,8 +1886,7 @@ function openIdea(id, fromScreen) {
   const completeItem = document.getElementById('more-complete');
   const restoreItem = document.getElementById('more-restore');
   if (completeItem && restoreItem) {
-    const isDemo = isDemoIdea(idea);
-    completeItem.style.display = (!isDemo && idea.status !== 'completed') ? 'flex' : 'none';
+    completeItem.style.display = (idea.status !== 'completed') ? 'flex' : 'none';
     restoreItem.style.display = (idea.status === 'completed') ? 'flex' : 'none';
   }
   closeMoreMenu();
@@ -1975,7 +1984,7 @@ function restoreCurrentIdea() {
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────
 function getRankedIdeas() {
-  return ideas.filter(i => i.status !== 'completed' && !isDemoIdea(i)).sort((a, b) => b.rank - a.rank);
+  return ideas.filter(i => i.status !== 'completed').sort((a, b) => b.rank - a.rank);
 }
 function moveRankUp(id) {
   const ranked = getRankedIdeas();
@@ -2008,7 +2017,7 @@ function setSortMode(mode) {
 // ─── Weekly Review ────────────────────────────────────────────────────────────
 let reviewQueue = [], reviewIndex = 0;
 function getReviewQueue() {
-  return ideas.filter(i => i.status === 'active' && !isDemoIdea(i)).sort((a, b) => a.createdAt - b.createdAt);
+  return ideas.filter(i => i.status === 'active').sort((a, b) => a.createdAt - b.createdAt);
 }
 function startReview() {
   reviewQueue = getReviewQueue();
