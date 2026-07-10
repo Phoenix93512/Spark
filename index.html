@@ -2059,7 +2059,7 @@ function renderReviewCard() {
           <span class="idea-time">${timeAgo(idea.createdAt)}</span>
         </div>
       </div>
-      <div id="review-complete-tint" style="position:absolute; inset:0; border-radius:14px; pointer-events:none; opacity:0; background:#22a06b;"></div>
+      <div id="review-complete-tint" style="position:absolute; inset:0; border-radius:14px; pointer-events:none; opacity:0; background:#00f400; mix-blend-mode:multiply;"></div>
     </div>
     <div style="display:flex; gap:8px; padding:0 8px; margin-bottom:8px;">
       <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
@@ -2138,25 +2138,29 @@ function setupReviewSwipe() {
     const ty = horizontal ? s.dy * 0.2 : s.dy;
     s.card.style.transform = `translate(${tx}px, ${ty}px) rotate(${horizontal ? s.dx / 24 : 0}deg)`;
 
-    // Glow grows with total distance moved, in any direction — the harder you drag, the brighter it glows.
+    const isDeleting = horizontal && s.dx < 0;
+    const isCompleting = !horizontal && s.dy < 0;
+
+    // Glow grows with distance moved, but only outside the dedicated delete/complete states —
+    // tight and edge-hugging rather than a wide diffuse halo.
     const dist = Math.hypot(s.dx, s.dy);
-    const glow = Math.min(1, dist / THRESH);
+    const glow = (!isDeleting && !isCompleting) ? Math.min(1, dist / THRESH) : 0;
     s.card.style.boxShadow = glow > 0
-      ? `0 0 ${18 + glow * 46}px ${2 + glow * 12}px rgba(244,107,14,${0.12 + glow * 0.48})`
+      ? `0 0 ${4 + glow * 6}px ${1 + glow * 4}px rgba(244,107,14,${0.4 + glow * 0.55})`
       : '0 0 0 0 rgba(244,107,14,0)';
 
     // Dragging left toward delete fades the card's content out.
     const body = document.getElementById('review-card-body');
     if (body) {
-      const deleteT = horizontal && s.dx < 0 ? Math.min(1, Math.abs(s.dx) / THRESH) : 0;
+      const deleteT = isDeleting ? Math.min(1, Math.abs(s.dx) / THRESH) : 0;
       body.style.opacity = String(1 - deleteT * 0.85);
     }
 
-    // Dragging up toward complete washes the card in green.
+    // Dragging up toward complete washes the whole card — text included — in green.
     const tint = document.getElementById('review-complete-tint');
     if (tint) {
-      const completeT = !horizontal && s.dy < 0 ? Math.min(1, Math.abs(s.dy) / THRESH) : 0;
-      tint.style.opacity = String(completeT * 0.6);
+      const completeT = isCompleting ? Math.min(1, Math.abs(s.dy) / THRESH) : 0;
+      tint.style.opacity = String(completeT);
     }
 
     const leftChev = document.getElementById('review-chevron-left');
