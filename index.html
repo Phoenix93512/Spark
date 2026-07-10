@@ -626,11 +626,18 @@
     <div class="topbar">
       <span class="topbar-title">Ideas</span>
       <div class="topbar-actions">
+        <button class="icon-btn" id="sort-mode-btn" onclick="setSortMode(getSortMode()==='recent'?'top':'recent')" title="Showing: Recent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </button>
         <button class="icon-btn icon-btn-search" onclick="openSearch()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
         </button>
         <button class="avatar" onclick="showNavScreen('screen-settings')" aria-label="Settings">G</button>
       </div>
+    </div>
+    <div class="api-banner" id="review-banner-inbox" style="display:none;" onclick="startReview()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg>
+      <span>Time to review your ideas</span>
     </div>
     <div id="inbox-content" class="content"></div>
     <div class="voice-indicator" id="voice-indicator">
@@ -770,6 +777,40 @@
         </div>
       </div>
       <div class="settings-section">
+        <div class="settings-label">Reviews</div>
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Review reminder frequency</div>
+            <div class="settings-row-sub">How often you're prompted to keep, delete, or complete old ideas.</div>
+          </div>
+          <div class="mode-picker" style="width:100%;">
+            <button class="mode-btn" id="settings-review-off"     onclick="setReviewFrequency('off')">Off</button>
+            <button class="mode-btn" id="settings-review-daily"   onclick="setReviewFrequency('daily')">Daily</button>
+            <button class="mode-btn" id="settings-review-weekly"  onclick="setReviewFrequency('weekly')">Weekly</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Enable review reminders</div>
+            <div class="settings-row-sub">Also send a notification when a review is due (in-app banner always shows regardless).</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="review-notif-toggle" onchange="toggleReviewReminders()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Review ideas now</div>
+            <div class="settings-row-sub">Go through your active ideas one at a time, any time.</div>
+          </div>
+          <button class="icon-btn" onclick="startReview()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="settings-section">
         <div class="settings-label">Export</div>
         <div class="settings-row">
           <div class="settings-row-info">
@@ -830,6 +871,14 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4h6l-1 7 3 3v2H7v-2l3-3z"/><path d="M12 16v4"/></svg>
             <span id="more-pin-label">Pin</span>
           </button>
+          <button class="more-item" id="more-complete" onclick="markCompleteCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg>
+            <span>Mark complete</span>
+          </button>
+          <button class="more-item" id="more-restore" onclick="restoreCurrentIdea()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 9.5a9 9 0 1 1-1.2 5"/><polyline points="3 4 3 9.5 8.5 9.5"/></svg>
+            <span>Restore</span>
+          </button>
           <button class="more-item" onclick="moveCurrentIdea()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             <span>Move…</span>
@@ -847,6 +896,18 @@
       </div>
     </div>
     <div class="content" id="detail-content" style="padding-top:8px;"></div>
+  </div>
+
+  <!-- WEEKLY REVIEW SCREEN -->
+  <div class="screen" id="screen-review">
+    <div class="topbar">
+      <button class="back-btn" onclick="backFromReview()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Close
+      </button>
+      <span id="review-progress" style="font-size:13px;font-weight:500;color:var(--text-3);"></span>
+    </div>
+    <div class="content" id="review-content" style="padding-top:8px;"></div>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -996,7 +1057,8 @@ function seedDemoIdeas(force) {
     id: 'demo-' + Math.random().toString(36).slice(2, 9),
     title, description, folder, tags, bullets,
     createdAt: now - daysAgo * DAY - (hour || 0) * 3600000,
-    transcript: transcript || '', relatedTo: [], pinned: false, isDemo: true
+    transcript: transcript || '', relatedTo: [], pinned: false, isDemo: true,
+    status: 'active', completedAt: null, rank: -daysAgo
   });
   const demos = [
     // Today
@@ -1068,9 +1130,25 @@ function toggleDemoIdeas() {
   showToast(on ? 'Demo ideas added' : 'Demo ideas removed');
 }
 
+// ─── Schema migration (adds rank/status/completedAt to ideas saved before this feature) ──
+const SCHEMA_VERSION = 1;
+function migrateIdeaSchema() {
+  if (parseInt(localStorage.getItem('spark-schema-version') || '0') >= SCHEMA_VERSION) return;
+  ideas.forEach((idea, i) => {
+    if (typeof idea.rank !== 'number') idea.rank = ideas.length - i;
+    if (idea.status !== 'active' && idea.status !== 'completed') idea.status = 'active';
+    if (idea.completedAt === undefined) idea.completedAt = null;
+  });
+  if (!localStorage.getItem('spark-last-reviewed')) localStorage.setItem('spark-last-reviewed', String(Date.now()));
+  saveIdeas();
+  localStorage.setItem('spark-schema-version', String(SCHEMA_VERSION));
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
+  migrateIdeaSchema();
   seedDemoIdeas();
+  updateSortModeUI();
   renderInbox();
   renderFolders();
   checkApiBanner();
@@ -1079,6 +1157,9 @@ function init() {
   setupCreateButton();
   setupSwipe();
   setupSwipeBack();
+  checkReviewDue();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReviewDue(); });
+  window.addEventListener('focus', checkReviewDue);
 }
 init();
 
@@ -1112,6 +1193,7 @@ function loadSettings() {
   document.getElementById('demo-toggle').checked = demoEnabled();
   document.getElementById('ai-toggle').checked = isAIEnabled();
   updateSettingsModeUI();
+  loadReviewSettings();
 }
 function checkApiBanner() {
   const banner = document.getElementById('api-banner-inbox');
@@ -1168,10 +1250,10 @@ function showNavScreen(id) {
   const navId = navMap[id];
   if (navId) document.getElementById(navId).classList.add('active');
   if (id === 'screen-settings') { updateSettingsCount(); updateSettingsModeUI(); }
-  if (id !== 'screen-detail' && id !== 'screen-search' && id !== 'screen-folder-detail') {
+  if (id !== 'screen-detail' && id !== 'screen-search' && id !== 'screen-folder-detail' && id !== 'screen-review') {
     activeNavScreen = id;
   }
-  document.getElementById('bottom-nav').style.display = (id === 'screen-search') ? 'none' : 'flex';
+  document.getElementById('bottom-nav').style.display = (id === 'screen-search' || id === 'screen-review') ? 'none' : 'flex';
 }
 
 function hideOverlays() {
@@ -1210,14 +1292,28 @@ function renderInbox() {
     return;
   }
   const now = Date.now();
-  const pinned = ideas.filter(i => i.pinned);
-  const rest = ideas.filter(i => !i.pinned);
+  const activeIdeas = ideas.filter(i => i.status !== 'completed');
+  const pinned = activeIdeas.filter(i => i.pinned);
+  const rest = activeIdeas.filter(i => !i.pinned);
+  let html = '';
+
+  if (getSortMode() === 'top') {
+    if (pinned.length) {
+      html += collapsibleLabel('Pinned');
+      if (!collapsedSections.has('Pinned')) pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
+    }
+    html += `<div class="section-label" style="cursor:default;">Top Ideas</div>`;
+    rest.filter(i => !isDemoIdea(i)).sort((a, b) => b.rank - a.rank).forEach(idea => { html += ideaRowHTML(idea, now); });
+    rest.filter(i => isDemoIdea(i)).forEach(idea => { html += ideaRowHTML(idea, now); });
+    container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing to show</div></div>`;
+    return;
+  }
+
   const buckets = { 'Today': [], 'This Week': [], 'This Month': [] };
   rest.forEach(idea => {
     const b = dateBucket(idea.createdAt);
     if (b) buckets[b].push(idea);
   });
-  let html = '';
   if (pinned.length) {
     html += collapsibleLabel('Pinned');
     if (!collapsedSections.has('Pinned')) pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
@@ -1540,8 +1636,35 @@ function setupSwipeBack() {
 
 function renderFoldersScreen(container, filterFolder, title) {
   const folders = getFolders();
+
+  if (filterFolder === '__completed__') {
+    const now = Date.now();
+    const completed = ideas.filter(i => i.status === 'completed').sort((a, b) => b.completedAt - a.completedAt);
+    let html = `<div class="section-label">Achievements</div>`;
+    if (completed.length === 0) {
+      html += `<div class="empty-state" style="padding:40px 0"><div class="empty-title">Nothing completed yet</div><div class="empty-sub">Mark an idea complete from its detail menu to see it here</div></div>`;
+    } else {
+      completed.forEach(idea => { html += completedRowHTML(idea, now); });
+    }
+    container.innerHTML = html;
+    return;
+  }
+
+  if (filterFolder === '__ranked__') {
+    const ranked = getRankedIdeas();
+    const now = Date.now();
+    let html = `<div class="section-label">Top Ideas</div>`;
+    if (ranked.length === 0) {
+      html += `<div class="empty-state" style="padding:40px 0"><div class="empty-title">No ideas to rank yet</div></div>`;
+    } else {
+      ranked.forEach((idea, i) => { html += rankedRowHTML(idea, now, i, ranked.length); });
+    }
+    container.innerHTML = html;
+    return;
+  }
+
   if (filterFolder !== null) {
-    const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder);
+    const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder && i.status !== 'completed');
     const now = Date.now();
     let html = `<div class="section-label">${escHtml(filterFolder || 'Unfiled')}</div>`;
     if (folderIdeas.length === 0) {
@@ -1553,38 +1676,91 @@ function renderFoldersScreen(container, filterFolder, title) {
     return;
   }
 
-  if (folders.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        </div>
-        <div class="empty-title">No folders yet</div>
-        <div class="empty-sub">Folders are created automatically when you save ideas with AI, or add one when saving</div>
-      </div>`;
-    return;
-  }
+  const activeCount = ideas.filter(i => i.status !== 'completed').length;
+  const rankedCount = ideas.filter(i => i.status !== 'completed' && !isDemoIdea(i)).length;
+  const completedCount = ideas.filter(i => i.status === 'completed').length;
 
   let html = '<div class="section-label">All ideas</div>';
   // "All" row
   html += `<div class="folder-row" onclick="openFolderDetail('__all__', 'All ideas')">
     <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
-    <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${ideas.length} idea${ideas.length !== 1 ? 's' : ''}</div></div>
+    <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${activeCount} idea${activeCount !== 1 ? 's' : ''}</div></div>
+    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+  </div>`;
+  html += `<div class="folder-row" onclick="openFolderDetail('__ranked__', 'Top Ideas')">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+    <div class="folder-info"><div class="folder-name">Top Ideas</div><div class="folder-count">${rankedCount} idea${rankedCount !== 1 ? 's' : ''}</div></div>
+    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+  </div>`;
+  html += `<div class="folder-row" onclick="openFolderDetail('__completed__', 'Achievements')">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <div class="folder-info"><div class="folder-name">Achievements</div><div class="folder-count">${completedCount} idea${completedCount !== 1 ? 's' : ''}</div></div>
     <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
   </div>`;
 
-  html += '<div class="section-label" style="padding-top:16px;">Folders</div>';
-  folders.forEach(f => {
-    const count = ideas.filter(i => (i.folder || '') === f).length;
-    html += `<div class="folder-row" onclick="openFolderDetail('${escHtml(f)}', '${escHtml(f)}')">
-      <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-      <div class="folder-info"><div class="folder-name">${escHtml(f)}</div><div class="folder-count">${count} idea${count !== 1 ? 's' : ''}</div></div>
-      <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
-    </div>`;
-  });
+  if (folders.length > 0) {
+    html += '<div class="section-label" style="padding-top:16px;">Folders</div>';
+    folders.forEach(f => {
+      const count = ideas.filter(i => (i.folder || '') === f && i.status !== 'completed').length;
+      html += `<div class="folder-row" onclick="openFolderDetail('${escHtml(f)}', '${escHtml(f)}')">
+        <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="folder-info"><div class="folder-name">${escHtml(f)}</div><div class="folder-count">${count} idea${count !== 1 ? 's' : ''}</div></div>
+        <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>`;
+    });
+  }
   container.innerHTML = html;
 }
 
+function completedRowHTML(idea, now) {
+  const tags = (idea.tags || []).slice(0, 2);
+  return `<div class="idea-row-wrap" data-id="${idea.id}">
+    <div class="idea-row" onclick="openIdea('${idea.id}', 'screen-folder-detail')">
+      <div class="idea-body">
+        <div class="idea-title">${escHtml(idea.title)}</div>
+        <div class="idea-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta">
+          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">Completed ${timeAgo(idea.completedAt)}</span>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="event.stopPropagation(); restoreIdea('${idea.id}')" title="Restore">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5a9 9 0 1 1-1.2 5"/><polyline points="3 4 3 9.5 8.5 9.5"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function rankedRowHTML(idea, now, position, total) {
+  const tags = (idea.tags || []).slice(0, 2);
+  const upDisabled = position === 0 ? ' disabled' : '';
+  const downDisabled = position === total - 1 ? ' disabled' : '';
+  return `<div class="idea-row-wrap" data-id="${idea.id}">
+    <div class="idea-row" onclick="openIdea('${idea.id}', 'screen-folder-detail')">
+      <div class="idea-body">
+        <div class="idea-title">${escHtml(idea.title)}</div>
+        <div class="idea-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta">
+          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <button class="icon-btn" ${upDisabled} onclick="event.stopPropagation(); moveRankUp('${idea.id}')" title="Move up">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15l6-6 6 6"/></svg>
+        </button>
+        <button class="icon-btn" ${downDisabled} onclick="event.stopPropagation(); moveRankDown('${idea.id}')" title="Move down">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Folder names starting with "__" are reserved for smart folders (All ideas, Top Ideas, Achievements)
+function sanitizeFolderName(name) {
+  return name.replace(/^_+/, '');
+}
 function getFolders() {
   const seen = new Set();
   ideas.forEach(i => { if (i.folder) seen.add(i.folder); });
@@ -1696,6 +1872,14 @@ function openIdea(id, fromScreen) {
   // reflect pin state in the more-menu
   const pinLabel = document.getElementById('more-pin-label');
   if (pinLabel) pinLabel.textContent = idea.pinned ? 'Unpin' : 'Pin';
+  // reflect completion state in the more-menu
+  const completeItem = document.getElementById('more-complete');
+  const restoreItem = document.getElementById('more-restore');
+  if (completeItem && restoreItem) {
+    const isDemo = isDemoIdea(idea);
+    completeItem.style.display = (!isDemo && idea.status !== 'completed') ? 'flex' : 'none';
+    restoreItem.style.display = (idea.status === 'completed') ? 'flex' : 'none';
+  }
   closeMoreMenu();
   initFolderChip();
 
@@ -1739,7 +1923,7 @@ function initFolderChip() {
   document.getElementById('fcd-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && this.value.trim()) {
       const idea = ideas.find(i => i.id === currentIdeaId);
-      if (idea) { idea.folder = this.value.trim(); saveIdeas(); renderInbox(); renderFolders(); }
+      if (idea) { idea.folder = sanitizeFolderName(this.value.trim()); saveIdeas(); renderInbox(); renderFolders(); }
       openIdea(currentIdeaId, detailFromScreen);
     }
     if (e.key === 'Escape') close();
@@ -1757,6 +1941,313 @@ function togglePinCurrentIdea() {
   renderInbox();
   openIdea(currentIdeaId, detailFromScreen);
   showToast(idea.pinned ? 'Pinned' : 'Unpinned');
+}
+
+// ─── Complete / Achievements ────────────────────────────────────────────────────
+function markIdeaComplete(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  idea.status = 'completed';
+  idea.completedAt = Date.now();
+  saveIdeas();
+  refreshVisibleList();
+  showToast('Marked complete');
+}
+function restoreIdea(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  idea.status = 'active';
+  idea.completedAt = null;
+  saveIdeas();
+  refreshVisibleList();
+  showToast('Restored');
+}
+function markCompleteCurrentIdea() {
+  haptic(12);
+  markIdeaComplete(currentIdeaId);
+  openIdea(currentIdeaId, detailFromScreen);
+}
+function restoreCurrentIdea() {
+  haptic(12);
+  restoreIdea(currentIdeaId);
+  openIdea(currentIdeaId, detailFromScreen);
+}
+
+// ─── Ranking ──────────────────────────────────────────────────────────────────
+function getRankedIdeas() {
+  return ideas.filter(i => i.status !== 'completed' && !isDemoIdea(i)).sort((a, b) => b.rank - a.rank);
+}
+function moveRankUp(id) {
+  const ranked = getRankedIdeas();
+  const pos = ranked.findIndex(i => i.id === id);
+  if (pos <= 0) return;
+  haptic(10);
+  const a = ranked[pos], b = ranked[pos - 1];
+  [a.rank, b.rank] = [b.rank, a.rank];
+  saveIdeas();
+  refreshVisibleList();
+}
+function moveRankDown(id) {
+  const ranked = getRankedIdeas();
+  const pos = ranked.findIndex(i => i.id === id);
+  if (pos === -1 || pos >= ranked.length - 1) return;
+  haptic(10);
+  const a = ranked[pos], b = ranked[pos + 1];
+  [a.rank, b.rank] = [b.rank, a.rank];
+  saveIdeas();
+  refreshVisibleList();
+}
+function getSortMode() {
+  return localStorage.getItem('spark-sort-mode') || 'recent';
+}
+function setSortMode(mode) {
+  localStorage.setItem('spark-sort-mode', mode);
+  updateSortModeUI();
+  renderInbox();
+}
+// ─── Weekly Review ────────────────────────────────────────────────────────────
+let reviewQueue = [], reviewIndex = 0;
+function getReviewQueue() {
+  return ideas.filter(i => i.status === 'active' && !isDemoIdea(i)).sort((a, b) => a.createdAt - b.createdAt);
+}
+function startReview() {
+  reviewQueue = getReviewQueue();
+  reviewIndex = 0;
+  showNavScreen('screen-review');
+  renderReviewCard();
+  setupReviewSwipe();
+}
+let reviewCompleteConfirming = false, reviewCompleteConfirmTimer = null;
+function renderReviewCard() {
+  const container = document.getElementById('review-content');
+  const progress = document.getElementById('review-progress');
+  reviewCompleteConfirming = false;
+  clearTimeout(reviewCompleteConfirmTimer);
+  if (reviewIndex >= reviewQueue.length) {
+    progress.textContent = '';
+    container.innerHTML = `
+      <div class="empty-state" style="padding:60px 0">
+        <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="empty-title">You're all caught up</div>
+        <div class="empty-sub">Nothing left to review this time</div>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="finishReview()">Done</button>
+      </div>`;
+    return;
+  }
+  const idea = reviewQueue[reviewIndex];
+  progress.textContent = `${reviewIndex + 1} of ${reviewQueue.length}`;
+  const tags = (idea.tags || []).slice(0, 3);
+  container.innerHTML = `
+    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; margin:0 4px 28px; touch-action:pan-y;">
+      <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M15 18l-6-6 6-6"/></svg>
+      <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M9 18l6-6-6-6"/></svg>
+      <svg id="review-chevron-up" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:18px; height:18px; opacity:0.3;"><path d="M6 15l6-6 6 6"/></svg>
+      <div class="detail-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
+      <div class="detail-desc">${escHtml(idea.description)}</div>
+      <div class="idea-meta" style="margin-top:12px;">
+        ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+        <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; padding:0 8px; margin-bottom:8px;">
+      <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="reviewKeep()">Keep</button>
+    </div>
+    <div style="padding:0 8px;">
+      <button class="btn" id="review-complete-btn" style="width:100%; background:var(--bg-2); color:var(--text-2); display:flex; align-items:center; justify-content:center; gap:6px;" onclick="reviewCompleteTap()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;"><path d="M20 6L9 17l-5-5"/></svg>
+        Mark complete
+      </button>
+    </div>`;
+}
+function reviewCompleteTap() {
+  const btn = document.getElementById('review-complete-btn');
+  if (!reviewCompleteConfirming) {
+    reviewCompleteConfirming = true;
+    haptic(10);
+    btn.textContent = 'Tap to confirm complete';
+    btn.style.color = '#1D9E75';
+    reviewCompleteConfirmTimer = setTimeout(() => {
+      reviewCompleteConfirming = false;
+      renderReviewCard();
+    }, 3000);
+    return;
+  }
+  clearTimeout(reviewCompleteConfirmTimer);
+  reviewMarkComplete();
+}
+function reviewKeep() {
+  haptic(10);
+  reviewIndex++;
+  renderReviewCard();
+}
+function reviewDelete() {
+  const idea = reviewQueue[reviewIndex];
+  if (!idea) return;
+  deleteIdeaById(idea.id);
+  reviewQueue.splice(reviewIndex, 1);
+  renderReviewCard();
+}
+function reviewMarkComplete() {
+  const idea = reviewQueue[reviewIndex];
+  if (!idea) return;
+  markIdeaComplete(idea.id);
+  reviewQueue.splice(reviewIndex, 1);
+  renderReviewCard();
+}
+
+// ─── Review card swipe: left = delete, right = keep, up = complete ─────────────
+let reviewSwipe = null;
+function setupReviewSwipe() {
+  const el = document.getElementById('review-content');
+  if (!el || el._swipeBound) return;
+  el._swipeBound = true;
+  const THRESH = 90;
+  el.addEventListener('pointerdown', e => {
+    const card = e.target.closest('.review-card');
+    if (!card) return;
+    reviewSwipe = { card, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0 };
+    card.style.transition = 'none';
+  });
+  el.addEventListener('pointermove', e => {
+    if (!reviewSwipe) return;
+    const s = reviewSwipe;
+    s.dx = e.clientX - s.startX;
+    s.dy = e.clientY - s.startY;
+    const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
+    const tx = horizontal ? s.dx : s.dx * 0.2;
+    const ty = horizontal ? s.dy * 0.2 : s.dy;
+    s.card.style.transform = `translate(${tx}px, ${ty}px) rotate(${horizontal ? s.dx / 24 : 0}deg)`;
+    const leftChev = document.getElementById('review-chevron-left');
+    const rightChev = document.getElementById('review-chevron-right');
+    const upChev = document.getElementById('review-chevron-up');
+    if (leftChev) leftChev.style.opacity = horizontal && s.dx < 0 ? Math.min(1, 0.3 + Math.abs(s.dx) / THRESH) : 0.3;
+    if (rightChev) rightChev.style.opacity = horizontal && s.dx > 0 ? Math.min(1, 0.3 + s.dx / THRESH) : 0.3;
+    if (upChev) upChev.style.opacity = !horizontal && s.dy < 0 ? Math.min(1, 0.3 + Math.abs(s.dy) / THRESH) : 0.3;
+  });
+  function release() {
+    if (!reviewSwipe) return;
+    const s = reviewSwipe;
+    const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
+    s.card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    if (horizontal && s.dx <= -THRESH) {
+      s.card.style.transform = `translate(-420px, ${s.dy * 0.2}px) rotate(-14deg)`;
+      s.card.style.opacity = '0';
+      setTimeout(reviewDelete, 180);
+    } else if (horizontal && s.dx >= THRESH) {
+      s.card.style.transform = `translate(420px, ${s.dy * 0.2}px) rotate(14deg)`;
+      s.card.style.opacity = '0';
+      setTimeout(reviewKeep, 180);
+    } else if (!horizontal && s.dy <= -THRESH) {
+      s.card.style.transform = `translate(${s.dx * 0.2}px, -420px)`;
+      s.card.style.opacity = '0';
+      setTimeout(reviewMarkComplete, 180);
+    } else {
+      s.card.style.transform = '';
+      ['review-chevron-left', 'review-chevron-right', 'review-chevron-up'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.opacity = 0.3;
+      });
+    }
+    reviewSwipe = null;
+  }
+  el.addEventListener('pointerup', release);
+  el.addEventListener('pointercancel', () => { reviewSwipe = null; });
+}
+function finishReview() {
+  localStorage.setItem('spark-last-reviewed', String(Date.now()));
+  checkReviewDue();
+  refreshVisibleList();
+  showNavScreen('screen-inbox');
+}
+function backFromReview() {
+  showNavScreen('screen-inbox');
+}
+
+// ─── Review cadence, reminder banner, and Notification API ─────────────────────
+function getReviewFrequency() {
+  return localStorage.getItem('spark-review-frequency') || 'weekly';
+}
+function setReviewFrequency(freq) {
+  localStorage.setItem('spark-review-frequency', freq);
+  updateReviewFrequencyUI();
+  checkReviewDue();
+}
+function updateReviewFrequencyUI() {
+  const freq = getReviewFrequency();
+  ['off', 'daily', 'weekly'].forEach(f => {
+    const btn = document.getElementById('settings-review-' + f);
+    if (btn) btn.classList.toggle('active', f === freq);
+  });
+}
+function isReviewDue() {
+  const freq = getReviewFrequency();
+  if (freq === 'off') return false;
+  const interval = freq === 'daily' ? 86400000 : 7 * 86400000;
+  const last = parseInt(localStorage.getItem('spark-last-reviewed') || '0');
+  return (Date.now() - last) >= interval && getReviewQueue().length > 0;
+}
+function checkReviewDue() {
+  const banner = document.getElementById('review-banner-inbox');
+  const due = isReviewDue();
+  if (banner) banner.style.display = due ? 'flex' : 'none';
+  if (due && localStorage.getItem('spark-review-enabled') === '1' &&
+      typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    const freq = getReviewFrequency();
+    const interval = freq === 'daily' ? 86400000 : 7 * 86400000;
+    const periodStart = Math.floor(Date.now() / interval);
+    const lastFiredPeriod = localStorage.getItem('spark-last-notif-period');
+    if (String(periodStart) !== lastFiredPeriod) {
+      try {
+        const notif = new Notification('Time to review your ideas', {
+          body: 'Keep, delete, or complete the ideas that have been sitting for a while.'
+        });
+        notif.onclick = () => { window.focus(); startReview(); };
+        localStorage.setItem('spark-last-notif-period', String(periodStart));
+      } catch (e) {}
+    }
+  }
+}
+function toggleReviewReminders() {
+  const checkbox = document.getElementById('review-notif-toggle');
+  if (!checkbox.checked) {
+    localStorage.setItem('spark-review-enabled', '0');
+    return;
+  }
+  if (typeof Notification === 'undefined') {
+    checkbox.checked = false;
+    showToast('Notifications not supported on this device — the in-app banner will still show');
+    return;
+  }
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') {
+      localStorage.setItem('spark-review-enabled', '1');
+      showToast('Review reminders enabled');
+    } else {
+      checkbox.checked = false;
+      localStorage.setItem('spark-review-enabled', '0');
+      showToast('Notifications blocked — the in-app banner will still show');
+    }
+  });
+}
+function loadReviewSettings() {
+  updateReviewFrequencyUI();
+  const checkbox = document.getElementById('review-notif-toggle');
+  if (checkbox) {
+    checkbox.checked = localStorage.getItem('spark-review-enabled') === '1' &&
+      typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  }
+}
+
+function updateSortModeUI() {
+  const btn = document.getElementById('sort-mode-btn');
+  if (!btn) return;
+  const top = getSortMode() === 'top';
+  btn.classList.toggle('active-sort', top);
+  btn.title = top ? 'Showing: Top ideas' : 'Showing: Recent';
+  btn.innerHTML = top
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
 }
 
 // ─── Note "more" (3-dot) menu ──────────────────────────────────────────────────
@@ -1828,7 +2319,7 @@ function applyMoveFolderNew() {
   if (!el) return;
   const name = el.value.trim();
   if (!name) { el.focus(); return; }
-  applyMoveFolder(name);
+  applyMoveFolder(sanitizeFolderName(name));
 }
 function applyMoveFolder(folderName) {
   const idea = ideas.find(i => i.id === currentIdeaId);
@@ -2021,7 +2512,7 @@ function handleSearch() {
 
 function runSearch(q) {
   const lower = q.toLowerCase();
-  const scored = ideas.map(idea => {
+  const scored = ideas.filter(i => i.status !== 'completed').map(idea => {
     let score = 0;
     const fields = [
       idea.title, idea.description,
@@ -2714,7 +3205,10 @@ function showResult(parsed, noAI) {
     folder: parsed.folder || null,
     relatedTo: (parsed.relatedTo || []).filter(id => ideas.some(i => i.id === id)),
     transcript: currentTranscript,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    status: 'active',
+    completedAt: null,
+    rank: ideas.length ? Math.min(0, ...ideas.map(i => i.rank ?? 0)) - 1 : 0
   };
 
   hideLoadingQuote();
@@ -2801,7 +3295,7 @@ function saveIdea() {
   const selectVal = document.getElementById('folder-select').value;
   const newFolderVal = document.getElementById('folder-new-input').value.trim();
   if (selectVal === '__new__') {
-    pendingIdea.folder = newFolderVal || null;
+    pendingIdea.folder = newFolderVal ? sanitizeFolderName(newFolderVal) : null;
   } else {
     pendingIdea.folder = selectVal || null;
   }
