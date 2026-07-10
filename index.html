@@ -2047,16 +2047,19 @@ function renderReviewCard() {
   progress.textContent = `${reviewIndex + 1} of ${reviewQueue.length}`;
   const tags = (idea.tags || []).slice(0, 3);
   container.innerHTML = `
-    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; margin:0 4px 28px; touch-action:pan-y;">
+    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; margin:0 4px 28px; touch-action:pan-y; box-shadow:0 0 0 0 rgba(244,107,14,0);">
       <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M15 18l-6-6 6-6"/></svg>
       <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M9 18l6-6-6-6"/></svg>
       <svg id="review-chevron-up" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:18px; height:18px; opacity:0.3;"><path d="M6 15l6-6 6 6"/></svg>
-      <div class="detail-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
-      <div class="detail-desc">${escHtml(idea.description)}</div>
-      <div class="idea-meta" style="margin-top:12px;">
-        ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
-        <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+      <div id="review-card-body" style="position:relative;">
+        <div class="detail-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
+        <div class="detail-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta" style="margin-top:12px;">
+          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+        </div>
       </div>
+      <div id="review-complete-tint" style="position:absolute; inset:0; border-radius:14px; pointer-events:none; opacity:0; background:#22a06b;"></div>
     </div>
     <div style="display:flex; gap:8px; padding:0 8px; margin-bottom:8px;">
       <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
@@ -2112,6 +2115,13 @@ function setupReviewSwipe() {
   if (!el || el._swipeBound) return;
   el._swipeBound = true;
   const THRESH = 90;
+  function resetCardFx(card) {
+    card.style.boxShadow = '0 0 0 0 rgba(244,107,14,0)';
+    const body = document.getElementById('review-card-body');
+    if (body) body.style.opacity = '1';
+    const tint = document.getElementById('review-complete-tint');
+    if (tint) tint.style.opacity = '0';
+  }
   el.addEventListener('pointerdown', e => {
     const card = e.target.closest('.review-card');
     if (!card) return;
@@ -2127,6 +2137,28 @@ function setupReviewSwipe() {
     const tx = horizontal ? s.dx : s.dx * 0.2;
     const ty = horizontal ? s.dy * 0.2 : s.dy;
     s.card.style.transform = `translate(${tx}px, ${ty}px) rotate(${horizontal ? s.dx / 24 : 0}deg)`;
+
+    // Glow grows with total distance moved, in any direction — the harder you drag, the brighter it glows.
+    const dist = Math.hypot(s.dx, s.dy);
+    const glow = Math.min(1, dist / THRESH);
+    s.card.style.boxShadow = glow > 0
+      ? `0 0 ${18 + glow * 46}px ${2 + glow * 12}px rgba(244,107,14,${0.12 + glow * 0.48})`
+      : '0 0 0 0 rgba(244,107,14,0)';
+
+    // Dragging left toward delete fades the card's content out.
+    const body = document.getElementById('review-card-body');
+    if (body) {
+      const deleteT = horizontal && s.dx < 0 ? Math.min(1, Math.abs(s.dx) / THRESH) : 0;
+      body.style.opacity = String(1 - deleteT * 0.85);
+    }
+
+    // Dragging up toward complete washes the card in green.
+    const tint = document.getElementById('review-complete-tint');
+    if (tint) {
+      const completeT = !horizontal && s.dy < 0 ? Math.min(1, Math.abs(s.dy) / THRESH) : 0;
+      tint.style.opacity = String(completeT * 0.6);
+    }
+
     const leftChev = document.getElementById('review-chevron-left');
     const rightChev = document.getElementById('review-chevron-right');
     const upChev = document.getElementById('review-chevron-up');
@@ -2138,10 +2170,13 @@ function setupReviewSwipe() {
     if (!reviewSwipe) return;
     const s = reviewSwipe;
     const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
-    s.card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    s.card.style.transition = 'transform 0.22s ease, opacity 0.22s ease, box-shadow 0.22s ease';
+    const body = document.getElementById('review-card-body');
+    const tint = document.getElementById('review-complete-tint');
     if (horizontal && s.dx <= -THRESH) {
       s.card.style.transform = `translate(-420px, ${s.dy * 0.2}px) rotate(-14deg)`;
-      s.card.style.opacity = '0';
+      s.card.style.boxShadow = '0 0 0 0 rgba(244,107,14,0)';
+      if (body) body.style.opacity = '0';
       setTimeout(reviewDelete, 180);
     } else if (horizontal && s.dx >= THRESH) {
       s.card.style.transform = `translate(420px, ${s.dy * 0.2}px) rotate(14deg)`;
@@ -2149,10 +2184,11 @@ function setupReviewSwipe() {
       setTimeout(reviewKeep, 180);
     } else if (!horizontal && s.dy <= -THRESH) {
       s.card.style.transform = `translate(${s.dx * 0.2}px, -420px)`;
-      s.card.style.opacity = '0';
+      if (tint) { tint.style.transition = 'opacity 0.18s ease'; tint.style.opacity = '1'; }
       setTimeout(reviewMarkComplete, 180);
     } else {
       s.card.style.transform = '';
+      resetCardFx(s.card);
       ['review-chevron-left', 'review-chevron-right', 'review-chevron-up'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.opacity = 0.3;
