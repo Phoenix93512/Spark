@@ -916,7 +916,9 @@
       </button>
       <span id="review-progress" style="font-size:13px;font-weight:500;color:var(--text-3);"></span>
     </div>
-    <div class="content" id="review-content" style="padding-top:8px;"></div>
+    <div class="content" id="review-content" style="padding:0 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 96px); display:flex; flex-direction:column; justify-content:center;"></div>
+    <div id="review-swipe-label" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; color:var(--text-3); opacity:0; transition:opacity 0.25s ease; pointer-events:none; z-index:5;"></div>
+    <div id="review-actions" style="position:absolute; bottom:0; left:0; right:0; padding:12px 24px calc(env(safe-area-inset-bottom) + 16px); background:rgba(255,255,255,0.96); backdrop-filter:blur(12px); border-top:1px solid var(--border);"></div>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -2015,7 +2017,7 @@ function setSortMode(mode) {
   renderInbox();
 }
 // ─── Weekly Review ────────────────────────────────────────────────────────────
-let reviewQueue = [], reviewIndex = 0;
+let reviewQueue = [], reviewIndex = 0, reviewExpanded = false;
 function getReviewQueue() {
   return ideas.filter(i => i.status === 'active').sort((a, b) => a.createdAt - b.createdAt);
 }
@@ -2028,13 +2030,15 @@ function startReview() {
 }
 let reviewCompleteConfirming = false, reviewCompleteConfirmTimer = null;
 function renderReviewCard() {
-  const container = document.getElementById('review-content');
   const progress = document.getElementById('review-progress');
+  const actions = document.getElementById('review-actions');
   reviewCompleteConfirming = false;
+  reviewExpanded = false;
   clearTimeout(reviewCompleteConfirmTimer);
   if (reviewIndex >= reviewQueue.length) {
     progress.textContent = '';
-    container.innerHTML = `
+    actions.style.display = 'none';
+    document.getElementById('review-content').innerHTML = `
       <div class="empty-state" style="padding:60px 0">
         <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg></div>
         <div class="empty-title">You're all caught up</div>
@@ -2043,34 +2047,71 @@ function renderReviewCard() {
       </div>`;
     return;
   }
-  const idea = reviewQueue[reviewIndex];
+  actions.style.display = '';
   progress.textContent = `${reviewIndex + 1} of ${reviewQueue.length}`;
-  const tags = (idea.tags || []).slice(0, 3);
-  container.innerHTML = `
-    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; margin:0 4px 28px; touch-action:pan-y; box-shadow:0 0 0 0 rgba(244,107,14,0);">
-      <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M15 18l-6-6 6-6"/></svg>
-      <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3;"><path d="M9 18l6-6-6-6"/></svg>
-      <svg id="review-chevron-up" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:18px; height:18px; opacity:0.3;"><path d="M6 15l6-6 6 6"/></svg>
-      <div id="review-card-body" style="position:relative;">
-        <div class="detail-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
-        <div class="detail-desc">${escHtml(idea.description)}</div>
-        <div class="idea-meta" style="margin-top:12px;">
-          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
-          <span class="idea-time">${timeAgo(idea.createdAt)}</span>
-        </div>
-      </div>
-      <div id="review-complete-tint" style="position:absolute; inset:0; border-radius:14px; pointer-events:none; opacity:0; background:#00f400; mix-blend-mode:multiply;"></div>
-    </div>
-    <div style="display:flex; gap:8px; padding:0 8px; margin-bottom:8px;">
+  renderReviewCardContent();
+  actions.innerHTML = `
+    <div style="display:flex; gap:8px; margin-bottom:8px;">
       <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
       <button class="btn btn-primary" style="flex:1;" onclick="reviewKeep()">Keep</button>
     </div>
-    <div style="padding:0 8px;">
-      <button class="btn" id="review-complete-btn" style="width:100%; background:var(--bg-2); color:var(--text-2); display:flex; align-items:center; justify-content:center; gap:6px;" onclick="reviewCompleteTap()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;"><path d="M20 6L9 17l-5-5"/></svg>
-        Mark complete
-      </button>
+    <button class="btn" id="review-complete-btn" style="width:100%; background:var(--bg-2); color:var(--text-2); display:flex; align-items:center; justify-content:center; gap:6px;" onclick="reviewCompleteTap()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;"><path d="M20 6L9 17l-5-5"/></svg>
+      Mark complete
+    </button>`;
+}
+function renderReviewCardContent() {
+  const container = document.getElementById('review-content');
+  const idea = reviewQueue[reviewIndex];
+  if (!idea) return;
+  const tags = (idea.tags || []).slice(0, 3);
+  container.style.justifyContent = reviewExpanded ? 'flex-start' : 'center';
+  container.style.overflowY = reviewExpanded ? 'auto' : 'hidden';
+  const expandedHtml = reviewExpanded ? reviewExpandedDetailHtml(idea) : '';
+  container.innerHTML = `
+    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; ${reviewExpanded ? 'margin:0 4px 16px;' : 'margin:0 4px 28px;'} touch-action:pan-y;">
+      <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:${reviewExpanded ? 0 : 0.3};"><path d="M15 18l-6-6 6-6"/></svg>
+      <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:${reviewExpanded ? 0 : 0.3};"><path d="M9 18l6-6-6-6"/></svg>
+      <div id="review-card-body" style="position:relative;">
+        <div class="detail-title" id="review-card-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
+        <div class="detail-desc" id="review-card-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta" style="margin-top:12px;">
+          ${tags.map(t => `<span class="tag review-tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">${timeAgo(idea.createdAt)}</span>
+        </div>
+        ${expandedHtml}
+      </div>
     </div>`;
+}
+function reviewExpandedDetailHtml(idea) {
+  const mode = idea.mode || 'summary';
+  let listHtml = '';
+  const listStyle = 'margin:0 0 0 18px; padding:0; font-size:12.5px; color:var(--text); line-height:1.6;';
+  const labelStyle = 'font-size:11px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:0.03em; margin:14px 0 6px;';
+  if (mode === 'problems') {
+    const probs = (idea.problems || []).map(b => `<li>${escHtml(b)}</li>`).join('');
+    const sols = (idea.solutions || []).map(b => `<li>${escHtml(b)}</li>`).join('');
+    listHtml = `<div style="${labelStyle}">Problems</div><ul style="${listStyle}">${probs}</ul>
+      <div style="${labelStyle}">Solutions</div><ul style="${listStyle}">${sols}</ul>`;
+  } else if (mode === 'questions' && idea.questions && idea.questions.length) {
+    const qs = (idea.questions || []).map(b => `<li>${escHtml(b)}</li>`).join('');
+    listHtml = `<div style="${labelStyle}">Questions to explore</div><ul style="${listStyle}">${qs}</ul>`;
+  } else {
+    const bullets = (idea.bullets || []).map(b => `<li>${escHtml(b)}</li>`).join('');
+    listHtml = `<div style="${labelStyle}">Summary</div><ul style="${listStyle}">${bullets}</ul>`;
+  }
+  const transcriptContent = idea.transcript
+    ? `“${escHtml(idea.transcript)}”`
+    : '<span style="color:var(--text-3);">No transcript — idea was added without voice input</span>';
+  return `${listHtml}
+    <div style="height:1px; background:var(--border-light); margin:16px 0;"></div>
+    <div style="${labelStyle}">Original transcript</div>
+    <div style="font-size:12px; color:var(--text-2); line-height:1.6; font-style:italic;">${transcriptContent}</div>`;
+}
+function toggleReviewCardExpand() {
+  reviewExpanded = !reviewExpanded;
+  haptic(8);
+  renderReviewCardContent();
 }
 function reviewCompleteTap() {
   const btn = document.getElementById('review-complete-btn');
@@ -2108,19 +2149,43 @@ function reviewMarkComplete() {
   renderReviewCard();
 }
 
-// ─── Review card swipe: left = delete, right = keep, up = complete ─────────────
+// ─── Review swipe label: brief "Delete"/"Keep" confirmation after a committed swipe ──
+let reviewSwipeLabelTimer = null;
+function showReviewSwipeLabel(type) {
+  const el = document.getElementById('review-swipe-label');
+  if (!el) return;
+  clearTimeout(reviewSwipeLabelTimer);
+  el.innerHTML = type === 'delete'
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="1.8" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Delete`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" style="width:16px;height:16px;"><path d="M20 6L9 17l-5-5"/></svg>Keep`;
+  el.style.opacity = '1';
+  reviewSwipeLabelTimer = setTimeout(() => { el.style.opacity = '0'; }, 700);
+}
+
+// ─── Review card swipe: left = delete, right = keep ────────────────────────────
+function mixReviewColor(t, from, to) {
+  const m = (a, b) => Math.round(a + (b - a) * t);
+  return `rgb(${m(from[0], to[0])}, ${m(from[1], to[1])}, ${m(from[2], to[2])})`;
+}
+const REVIEW_TITLE_BASE = [28, 28, 30], REVIEW_TITLE_MAX = [179, 83, 19];
+const REVIEW_DESC_BASE = [138, 138, 142], REVIEW_DESC_MAX = [195, 111, 52];
+const REVIEW_BG_BASE = [255, 255, 255], REVIEW_BG_MAX = [252, 214, 188];
 let reviewSwipe = null;
 function setupReviewSwipe() {
   const el = document.getElementById('review-content');
   if (!el || el._swipeBound) return;
   el._swipeBound = true;
   const THRESH = 90;
+  const TAP_MAX = 10;
   function resetCardFx(card) {
-    card.style.boxShadow = '0 0 0 0 rgba(244,107,14,0)';
+    card.style.background = '';
+    const title = document.getElementById('review-card-title');
+    const desc = document.getElementById('review-card-desc');
+    if (title) title.style.color = '';
+    if (desc) desc.style.color = '';
+    document.querySelectorAll('.review-tag').forEach(t => { t.style.background = ''; t.style.color = ''; });
     const body = document.getElementById('review-card-body');
     if (body) body.style.opacity = '1';
-    const tint = document.getElementById('review-complete-tint');
-    if (tint) tint.style.opacity = '0';
   }
   el.addEventListener('pointerdown', e => {
     const card = e.target.closest('.review-card');
@@ -2133,21 +2198,14 @@ function setupReviewSwipe() {
     const s = reviewSwipe;
     s.dx = e.clientX - s.startX;
     s.dy = e.clientY - s.startY;
+    if (reviewExpanded) return;
     const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
     const tx = horizontal ? s.dx : s.dx * 0.2;
     const ty = horizontal ? s.dy * 0.2 : s.dy;
     s.card.style.transform = `translate(${tx}px, ${ty}px) rotate(${horizontal ? s.dx / 24 : 0}deg)`;
 
     const isDeleting = horizontal && s.dx < 0;
-    const isCompleting = !horizontal && s.dy < 0;
-
-    // Glow grows with distance moved, but only outside the dedicated delete/complete states —
-    // tight and edge-hugging rather than a wide diffuse halo.
-    const dist = Math.hypot(s.dx, s.dy);
-    const glow = (!isDeleting && !isCompleting) ? Math.min(1, dist / THRESH) : 0;
-    s.card.style.boxShadow = glow > 0
-      ? `0 0 ${4 + glow * 6}px ${1 + glow * 4}px rgba(244,107,14,${0.4 + glow * 0.55})`
-      : '0 0 0 0 rgba(244,107,14,0)';
+    const isKeeping = horizontal && s.dx > 0;
 
     // Dragging left toward delete fades the card's content out.
     const body = document.getElementById('review-card-body');
@@ -2156,47 +2214,56 @@ function setupReviewSwipe() {
       body.style.opacity = String(1 - deleteT * 0.85);
     }
 
-    // Dragging up toward complete washes the whole card — text included — in green.
-    const tint = document.getElementById('review-complete-tint');
-    if (tint) {
-      const completeT = isCompleting ? Math.min(1, Math.abs(s.dy) / THRESH) : 0;
-      tint.style.opacity = String(completeT);
-    }
+    // Dragging right toward keep blends the title, description, background, and tags
+    // directly toward orange (actual color values, not a translucent layer on top).
+    const keepT = isKeeping ? Math.min(1, s.dx / THRESH) : 0;
+    const title = document.getElementById('review-card-title');
+    const desc = document.getElementById('review-card-desc');
+    if (title) title.style.color = mixReviewColor(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MAX);
+    if (desc) desc.style.color = mixReviewColor(keepT, REVIEW_DESC_BASE, REVIEW_DESC_MAX);
+    s.card.style.background = mixReviewColor(keepT, REVIEW_BG_BASE, REVIEW_BG_MAX);
+    document.querySelectorAll('.review-tag').forEach(t => {
+      t.style.background = `rgba(244,107,14,${(0.25 * keepT).toFixed(3)})`;
+      t.style.color = mixReviewColor(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MAX);
+    });
 
     const leftChev = document.getElementById('review-chevron-left');
     const rightChev = document.getElementById('review-chevron-right');
-    const upChev = document.getElementById('review-chevron-up');
-    if (leftChev) leftChev.style.opacity = horizontal && s.dx < 0 ? Math.min(1, 0.3 + Math.abs(s.dx) / THRESH) : 0.3;
-    if (rightChev) rightChev.style.opacity = horizontal && s.dx > 0 ? Math.min(1, 0.3 + s.dx / THRESH) : 0.3;
-    if (upChev) upChev.style.opacity = !horizontal && s.dy < 0 ? Math.min(1, 0.3 + Math.abs(s.dy) / THRESH) : 0.3;
+    if (leftChev) leftChev.style.opacity = isDeleting ? Math.min(1, 0.3 + Math.abs(s.dx) / THRESH) : 0.3;
+    if (rightChev) rightChev.style.opacity = isKeeping ? Math.min(1, 0.3 + s.dx / THRESH) : 0.3;
   });
   function release() {
     if (!reviewSwipe) return;
     const s = reviewSwipe;
+    const dist = Math.hypot(s.dx, s.dy);
+    if (dist < TAP_MAX) {
+      s.card.style.transition = '';
+      s.card.style.transform = '';
+      toggleReviewCardExpand();
+      reviewSwipe = null;
+      return;
+    }
+    if (reviewExpanded) { reviewSwipe = null; return; }
     const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
-    s.card.style.transition = 'transform 0.22s ease, opacity 0.22s ease, box-shadow 0.22s ease';
+    s.card.style.transition = 'transform 0.22s ease, opacity 0.22s ease, background 0.22s ease';
     const body = document.getElementById('review-card-body');
-    const tint = document.getElementById('review-complete-tint');
     if (horizontal && s.dx <= -THRESH) {
       s.card.style.transform = `translate(-420px, ${s.dy * 0.2}px) rotate(-14deg)`;
-      s.card.style.boxShadow = '0 0 0 0 rgba(244,107,14,0)';
       if (body) body.style.opacity = '0';
+      showReviewSwipeLabel('delete');
       setTimeout(reviewDelete, 180);
     } else if (horizontal && s.dx >= THRESH) {
       s.card.style.transform = `translate(420px, ${s.dy * 0.2}px) rotate(14deg)`;
       s.card.style.opacity = '0';
+      showReviewSwipeLabel('keep');
       setTimeout(reviewKeep, 180);
-    } else if (!horizontal && s.dy <= -THRESH) {
-      s.card.style.transform = `translate(${s.dx * 0.2}px, -420px)`;
-      if (tint) { tint.style.transition = 'opacity 0.18s ease'; tint.style.opacity = '1'; }
-      setTimeout(reviewMarkComplete, 180);
     } else {
       s.card.style.transform = '';
       resetCardFx(s.card);
-      ['review-chevron-left', 'review-chevron-right', 'review-chevron-up'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.opacity = 0.3;
-      });
+      const leftChev = document.getElementById('review-chevron-left');
+      const rightChev = document.getElementById('review-chevron-right');
+      if (leftChev) leftChev.style.opacity = 0.3;
+      if (rightChev) rightChev.style.opacity = 0.3;
     }
     reviewSwipe = null;
   }
