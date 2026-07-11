@@ -239,14 +239,6 @@
   .tag.orange { background: var(--orange-light); color: var(--orange); }
   .idea-time { font-size: 12px; color: var(--text-3); }
 
-  .view-more-btn {
-    width: 100%; border: none; background: none; cursor: pointer;
-    font-family: var(--font); font-size: 12px; color: var(--text-3);
-    padding: 14px 0; display: flex; align-items: center; gap: 6px; transition: color 0.15s;
-  }
-  .view-more-btn:hover { color: var(--text); }
-  .view-more-btn svg { width: 14px; height: 14px; }
-
   /* Profile avatar (top-right) */
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
@@ -339,14 +331,6 @@
   .related-row:last-child { border-bottom: none; }
   .related-row:hover { color: var(--text); }
   .related-row svg { width: 12px; height: 12px; color: var(--orange); flex-shrink: 0; }
-
-  .delete-btn {
-    display: flex; align-items: center; gap: 6px; margin: 20px 24px 80px;
-    border: none; background: none; cursor: pointer; font-family: var(--font);
-    font-size: 12px; color: var(--text-3); padding: 8px 0; transition: color 0.15s;
-  }
-  .delete-btn:hover { color: #eb5757; }
-  .delete-btn svg { width: 14px; height: 14px; }
 
   /* Folder rows */
   .folder-row {
@@ -1193,8 +1177,6 @@ function loadSettings() {
   loadReviewSettings();
 }
 function checkApiBanner() {
-  const banner = document.getElementById('api-banner-inbox');
-  if (banner) banner.style.display = getApiKey() ? 'none' : 'flex';
 }
 function updateSettingsCount() {
   document.getElementById('settings-idea-count').textContent = ideas.length + ' idea' + (ideas.length !== 1 ? 's' : '');
