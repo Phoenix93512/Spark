@@ -231,15 +231,6 @@
   .idea-row.swiped::after { display: none; }
   .idea-row-wrap:last-child .idea-row::after,
   .idea-row-wrap:has(+ .section-label) .idea-row::after { display: none; }
-  .rank-badge {
-    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; color: var(--text-3); background: var(--bg-2);
-    margin-top: 1px;
-  }
-  .rank-badge.rank-1 { background: var(--orange); color: #fff; }
-  .rank-badge.rank-2 { background: var(--orange-mid); color: var(--orange); }
-  .rank-badge.rank-3 { background: var(--orange-light); color: var(--orange); }
   .idea-body { flex: 1; min-width: 0; }
   .idea-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.2px; }
   .idea-desc { font-size: 15px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -635,9 +626,6 @@
     <div class="topbar">
       <span class="topbar-title">Ideas</span>
       <div class="topbar-actions">
-        <button class="icon-btn" id="sort-mode-btn" onclick="setSortMode(getSortMode()==='recent'?'top':'recent')" title="Showing: Recent">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-        </button>
         <button class="icon-btn icon-btn-search" onclick="openSearch()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 3 3"/></svg>
         </button>
@@ -809,7 +797,7 @@
             <div class="toggle-thumb"></div>
           </label>
         </div>
-        <div class="settings-row">
+        <div class="settings-row" onclick="startReview()" style="cursor:pointer;">
           <div class="settings-row-info">
             <div class="settings-row-title">Review ideas now</div>
             <div class="settings-row-sub">Go through your active ideas one at a time, any time.</div>
@@ -1069,7 +1057,7 @@ function seedDemoIdeas(force) {
     title, description, folder, tags, bullets,
     createdAt: now - daysAgo * DAY - (hour || 0) * 3600000,
     transcript: transcript || '', relatedTo: [], pinned: false, isDemo: true,
-    status: 'active', completedAt: null, rank: -daysAgo
+    status: 'active', completedAt: null
   });
   const demos = [
     // Today
@@ -1141,12 +1129,11 @@ function toggleDemoIdeas() {
   showToast(on ? 'Demo ideas added' : 'Demo ideas removed');
 }
 
-// ─── Schema migration (adds rank/status/completedAt to ideas saved before this feature) ──
+// ─── Schema migration (adds status/completedAt to ideas saved before this feature) ──
 const SCHEMA_VERSION = 1;
 function migrateIdeaSchema() {
   if (parseInt(localStorage.getItem('spark-schema-version') || '0') >= SCHEMA_VERSION) return;
   ideas.forEach((idea, i) => {
-    if (typeof idea.rank !== 'number') idea.rank = ideas.length - i;
     if (idea.status !== 'active' && idea.status !== 'completed') idea.status = 'active';
     if (idea.completedAt === undefined) idea.completedAt = null;
   });
@@ -1159,7 +1146,6 @@ function migrateIdeaSchema() {
 function init() {
   migrateIdeaSchema();
   seedDemoIdeas();
-  updateSortModeUI();
   renderInbox();
   renderFolders();
   checkApiBanner();
@@ -1307,17 +1293,6 @@ function renderInbox() {
   const pinned = activeIdeas.filter(i => i.pinned);
   const rest = activeIdeas.filter(i => !i.pinned);
   let html = '';
-
-  if (getSortMode() === 'top') {
-    if (pinned.length) {
-      html += collapsibleLabel('Pinned');
-      if (!collapsedSections.has('Pinned')) pinned.forEach(idea => { html += ideaRowHTML(idea, now); });
-    }
-    html += `<div class="section-label" style="cursor:default;">Top Ideas</div>`;
-    rest.sort((a, b) => b.rank - a.rank).forEach(idea => { html += ideaRowHTML(idea, now); });
-    container.innerHTML = html || `<div class="empty-state" style="padding:48px 0"><div class="empty-title">Nothing to show</div></div>`;
-    return;
-  }
 
   const buckets = { 'Today': [], 'This Week': [], 'This Month': [] };
   rest.forEach(idea => {
@@ -1660,19 +1635,6 @@ function renderFoldersScreen(container, filterFolder, title) {
     return;
   }
 
-  if (filterFolder === '__ranked__') {
-    const ranked = getRankedIdeas();
-    const now = Date.now();
-    let html = `<div class="section-label">Top Ideas</div>`;
-    if (ranked.length === 0) {
-      html += `<div class="empty-state" style="padding:40px 0"><div class="empty-title">No ideas to rank yet</div></div>`;
-    } else {
-      ranked.forEach((idea, i) => { html += rankedRowHTML(idea, now, i, ranked.length); });
-    }
-    container.innerHTML = html;
-    return;
-  }
-
   if (filterFolder !== null) {
     const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder && i.status !== 'completed');
     const now = Date.now();
@@ -1687,7 +1649,6 @@ function renderFoldersScreen(container, filterFolder, title) {
   }
 
   const activeCount = ideas.filter(i => i.status !== 'completed').length;
-  const rankedCount = ideas.filter(i => i.status !== 'completed').length;
   const completedCount = ideas.filter(i => i.status === 'completed').length;
 
   let html = '<div class="section-label">All ideas</div>';
@@ -1697,9 +1658,9 @@ function renderFoldersScreen(container, filterFolder, title) {
     <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${activeCount} idea${activeCount !== 1 ? 's' : ''}</div></div>
     <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
   </div>`;
-  html += `<div class="folder-row" onclick="openFolderDetail('__ranked__', 'Top Ideas')">
-    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
-    <div class="folder-info"><div class="folder-name">Top Ideas</div><div class="folder-count">${rankedCount} idea${rankedCount !== 1 ? 's' : ''}</div></div>
+  html += `<div class="folder-row" onclick="startReview()">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+    <div class="folder-info"><div class="folder-name">Review ideas</div><div class="folder-count">${activeCount} idea${activeCount !== 1 ? 's' : ''}</div></div>
     <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
   </div>`;
   html += `<div class="folder-row" onclick="openFolderDetail('__completed__', 'Achievements')">
@@ -1741,35 +1702,8 @@ function completedRowHTML(idea, now) {
   </div>`;
 }
 
-function rankedRowHTML(idea, now, position, total) {
-  const tags = (idea.tags || []).slice(0, 2);
-  const upDisabled = position === 0 ? ' disabled' : '';
-  const downDisabled = position === total - 1 ? ' disabled' : '';
-  const rankNum = position < 3 ? `<div class="rank-badge rank-${position + 1}">${position + 1}</div>` : '';
-  return `<div class="idea-row-wrap" data-id="${idea.id}">
-    <div class="idea-row" onclick="openIdea('${idea.id}', 'screen-folder-detail')">
-      ${rankNum}
-      <div class="idea-body">
-        <div class="idea-title">${escHtml(idea.title)}</div>
-        <div class="idea-desc">${escHtml(idea.description)}</div>
-        <div class="idea-meta">
-          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
-          <span class="idea-time">${timeAgo(idea.createdAt)}</span>
-        </div>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:2px;">
-        <button class="icon-btn" ${upDisabled} onclick="event.stopPropagation(); moveRankUp('${idea.id}')" title="Move up">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15l6-6 6 6"/></svg>
-        </button>
-        <button class="icon-btn" ${downDisabled} onclick="event.stopPropagation(); moveRankDown('${idea.id}')" title="Move down">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-      </div>
-    </div>
-  </div>`;
-}
 
-// Folder names starting with "__" are reserved for smart folders (All ideas, Top Ideas, Achievements)
+// Folder names starting with "__" are reserved for smart folders (All ideas, Achievements)
 function sanitizeFolderName(name) {
   return name.replace(/^_+/, '');
 }
@@ -1984,38 +1918,6 @@ function restoreCurrentIdea() {
   openIdea(currentIdeaId, detailFromScreen);
 }
 
-// ─── Ranking ──────────────────────────────────────────────────────────────────
-function getRankedIdeas() {
-  return ideas.filter(i => i.status !== 'completed').sort((a, b) => b.rank - a.rank);
-}
-function moveRankUp(id) {
-  const ranked = getRankedIdeas();
-  const pos = ranked.findIndex(i => i.id === id);
-  if (pos <= 0) return;
-  haptic(10);
-  const a = ranked[pos], b = ranked[pos - 1];
-  [a.rank, b.rank] = [b.rank, a.rank];
-  saveIdeas();
-  refreshVisibleList();
-}
-function moveRankDown(id) {
-  const ranked = getRankedIdeas();
-  const pos = ranked.findIndex(i => i.id === id);
-  if (pos === -1 || pos >= ranked.length - 1) return;
-  haptic(10);
-  const a = ranked[pos], b = ranked[pos + 1];
-  [a.rank, b.rank] = [b.rank, a.rank];
-  saveIdeas();
-  refreshVisibleList();
-}
-function getSortMode() {
-  return localStorage.getItem('spark-sort-mode') || 'recent';
-}
-function setSortMode(mode) {
-  localStorage.setItem('spark-sort-mode', mode);
-  updateSortModeUI();
-  renderInbox();
-}
 // ─── Weekly Review ────────────────────────────────────────────────────────────
 let reviewQueue = [], reviewIndex = 0, reviewExpanded = false;
 function getReviewQueue() {
@@ -2043,7 +1945,7 @@ function renderReviewCard() {
         <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg></div>
         <div class="empty-title">You're all caught up</div>
         <div class="empty-sub">Nothing left to review this time</div>
-        <button class="btn btn-primary" style="margin-top:20px;" onclick="finishReview()">Done</button>
+        <button class="btn btn-primary" style="margin-top:20px; flex:none; width:200px;" onclick="finishReview()">Done</button>
       </div>`;
     return;
   }
@@ -2150,6 +2052,11 @@ function reviewMarkComplete() {
 }
 
 // ─── Review swipe label: brief "Delete"/"Keep" confirmation after a committed swipe ──
+// The next card is held back (see release()'s commit timeouts) until this label has
+// fully faded out, so the two never overlap on screen.
+const REVIEW_LABEL_VISIBLE_MS = 700;
+const REVIEW_LABEL_FADE_MS = 250;
+const REVIEW_LABEL_TOTAL_MS = REVIEW_LABEL_VISIBLE_MS + REVIEW_LABEL_FADE_MS;
 let reviewSwipeLabelTimer = null;
 function showReviewSwipeLabel(type) {
   const el = document.getElementById('review-swipe-label');
@@ -2159,7 +2066,7 @@ function showReviewSwipeLabel(type) {
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="1.8" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Delete`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" style="width:16px;height:16px;"><path d="M20 6L9 17l-5-5"/></svg>Keep`;
   el.style.opacity = '1';
-  reviewSwipeLabelTimer = setTimeout(() => { el.style.opacity = '0'; }, 700);
+  reviewSwipeLabelTimer = setTimeout(() => { el.style.opacity = '0'; }, REVIEW_LABEL_VISIBLE_MS);
 }
 
 // ─── Review card swipe: left = delete, right = keep ────────────────────────────
@@ -2167,9 +2074,17 @@ function mixReviewColor(t, from, to) {
   const m = (a, b) => Math.round(a + (b - a) * t);
   return `rgb(${m(from[0], to[0])}, ${m(from[1], to[1])}, ${m(from[2], to[2])})`;
 }
-const REVIEW_TITLE_BASE = [28, 28, 30], REVIEW_TITLE_MAX = [179, 83, 19];
-const REVIEW_DESC_BASE = [138, 138, 142], REVIEW_DESC_MAX = [195, 111, 52];
-const REVIEW_BG_BASE = [255, 255, 255], REVIEW_BG_MAX = [252, 214, 188];
+// Text lightens toward a neutral grey first, then tints toward orange — mixing
+// near-black directly with orange produces a muddy brown, so this avoids that.
+const REVIEW_BLEND_MIDPOINT = 0.4;
+function mixReviewColorTwoStage(t, from, mid, to) {
+  return t < REVIEW_BLEND_MIDPOINT
+    ? mixReviewColor(t / REVIEW_BLEND_MIDPOINT, from, mid)
+    : mixReviewColor((t - REVIEW_BLEND_MIDPOINT) / (1 - REVIEW_BLEND_MIDPOINT), mid, to);
+}
+const REVIEW_TITLE_BASE = [28, 28, 30], REVIEW_TITLE_MID = [150, 150, 153], REVIEW_TITLE_MAX = [244, 107, 14];
+const REVIEW_DESC_BASE = [138, 138, 142], REVIEW_DESC_MID = [185, 185, 188], REVIEW_DESC_MAX = [244, 147, 79];
+const REVIEW_BG_BASE = [255, 255, 255], REVIEW_BG_MAX = [253, 238, 222];
 let reviewSwipe = null;
 function setupReviewSwipe() {
   const el = document.getElementById('review-content');
@@ -2219,12 +2134,12 @@ function setupReviewSwipe() {
     const keepT = isKeeping ? Math.min(1, s.dx / THRESH) : 0;
     const title = document.getElementById('review-card-title');
     const desc = document.getElementById('review-card-desc');
-    if (title) title.style.color = mixReviewColor(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MAX);
-    if (desc) desc.style.color = mixReviewColor(keepT, REVIEW_DESC_BASE, REVIEW_DESC_MAX);
+    if (title) title.style.color = mixReviewColorTwoStage(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MID, REVIEW_TITLE_MAX);
+    if (desc) desc.style.color = mixReviewColorTwoStage(keepT, REVIEW_DESC_BASE, REVIEW_DESC_MID, REVIEW_DESC_MAX);
     s.card.style.background = mixReviewColor(keepT, REVIEW_BG_BASE, REVIEW_BG_MAX);
     document.querySelectorAll('.review-tag').forEach(t => {
       t.style.background = `rgba(244,107,14,${(0.25 * keepT).toFixed(3)})`;
-      t.style.color = mixReviewColor(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MAX);
+      t.style.color = mixReviewColorTwoStage(keepT, REVIEW_TITLE_BASE, REVIEW_TITLE_MID, REVIEW_TITLE_MAX);
     });
 
     const leftChev = document.getElementById('review-chevron-left');
@@ -2251,12 +2166,12 @@ function setupReviewSwipe() {
       s.card.style.transform = `translate(-420px, ${s.dy * 0.2}px) rotate(-14deg)`;
       if (body) body.style.opacity = '0';
       showReviewSwipeLabel('delete');
-      setTimeout(reviewDelete, 180);
+      setTimeout(reviewDelete, REVIEW_LABEL_TOTAL_MS);
     } else if (horizontal && s.dx >= THRESH) {
       s.card.style.transform = `translate(420px, ${s.dy * 0.2}px) rotate(14deg)`;
       s.card.style.opacity = '0';
       showReviewSwipeLabel('keep');
-      setTimeout(reviewKeep, 180);
+      setTimeout(reviewKeep, REVIEW_LABEL_TOTAL_MS);
     } else {
       s.card.style.transform = '';
       resetCardFx(s.card);
@@ -2353,17 +2268,6 @@ function loadReviewSettings() {
     checkbox.checked = localStorage.getItem('spark-review-enabled') === '1' &&
       typeof Notification !== 'undefined' && Notification.permission === 'granted';
   }
-}
-
-function updateSortModeUI() {
-  const btn = document.getElementById('sort-mode-btn');
-  if (!btn) return;
-  const top = getSortMode() === 'top';
-  btn.classList.toggle('active-sort', top);
-  btn.title = top ? 'Showing: Top ideas' : 'Showing: Recent';
-  btn.innerHTML = top
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
 }
 
 // ─── Note "more" (3-dot) menu ──────────────────────────────────────────────────
@@ -3323,8 +3227,7 @@ function showResult(parsed, noAI) {
     transcript: currentTranscript,
     createdAt: Date.now(),
     status: 'active',
-    completedAt: null,
-    rank: ideas.length ? Math.min(0, ...ideas.map(i => i.rank ?? 0)) - 1 : 0
+    completedAt: null
   };
 
   hideLoadingQuote();
