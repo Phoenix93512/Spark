@@ -1134,7 +1134,7 @@ const SCHEMA_VERSION = 1;
 function migrateIdeaSchema() {
   if (parseInt(localStorage.getItem('spark-schema-version') || '0') >= SCHEMA_VERSION) return;
   ideas.forEach((idea, i) => {
-    if (idea.status !== 'active' && idea.status !== 'completed') idea.status = 'active';
+    if (idea.status !== 'active' && idea.status !== 'completed' && idea.status !== 'deleted') idea.status = 'active';
     if (idea.completedAt === undefined) idea.completedAt = null;
   });
   if (!localStorage.getItem('spark-last-reviewed')) localStorage.setItem('spark-last-reviewed', String(Date.now()));
@@ -1289,7 +1289,7 @@ function renderInbox() {
     return;
   }
   const now = Date.now();
-  const activeIdeas = ideas.filter(i => i.status !== 'completed');
+  const activeIdeas = ideas.filter(i => i.status === 'active');
   const pinned = activeIdeas.filter(i => i.pinned);
   const rest = activeIdeas.filter(i => !i.pinned);
   let html = '';
@@ -1517,7 +1517,7 @@ function deleteIdeaById(id) {
   haptic(18);
   const index = ideas.findIndex(i => i.id === id);
   if (index === -1) return;
-  lastDeleted = { idea: ideas[index], index };
+  lastDeleted = { id };
   const wrap = document.querySelector(`.idea-row-wrap[data-id="${id}"]`);
   if (wrap) {
     wrap.style.overflow = 'hidden';
@@ -1529,7 +1529,10 @@ function deleteIdeaById(id) {
     setTimeout(commit, 290);
   } else { commit(); }
   function commit() {
-    ideas = ideas.filter(i => i.id !== id);
+    const idea = ideas.find(i => i.id === id);
+    if (!idea) return;
+    idea.status = 'deleted';
+    idea.deletedAt = Date.now();
     saveIdeas();
     refreshVisibleList();
     showUndoToast();
@@ -1539,8 +1542,8 @@ function deleteIdeaById(id) {
 function undoDelete() {
   if (!lastDeleted) return;
   haptic(12);
-  const { idea, index } = lastDeleted;
-  ideas.splice(Math.min(index, ideas.length), 0, idea);
+  const idea = ideas.find(i => i.id === lastDeleted.id);
+  if (idea) { idea.status = 'active'; idea.deletedAt = null; }
   lastDeleted = null;
   saveIdeas();
   refreshVisibleList();
@@ -1635,8 +1638,22 @@ function renderFoldersScreen(container, filterFolder, title) {
     return;
   }
 
+  if (filterFolder === '__trash__') {
+    const now = Date.now();
+    const deleted = ideas.filter(i => i.status === 'deleted').sort((a, b) => b.deletedAt - a.deletedAt);
+    let html = `<div class="section-label">Recently Deleted</div>`;
+    if (deleted.length === 0) {
+      html += `<div class="empty-state" style="padding:40px 0"><div class="empty-title">Nothing deleted</div></div>`;
+    } else {
+      html += `<button class="btn" style="width:100%; border:1px solid #eb5757; color:#eb5757; background:transparent; margin-bottom:12px;" onclick="permanentlyDeleteAll()">Delete all permanently</button>`;
+      deleted.forEach(idea => { html += deletedRowHTML(idea, now); });
+    }
+    container.innerHTML = html;
+    return;
+  }
+
   if (filterFolder !== null) {
-    const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder && i.status !== 'completed');
+    const folderIdeas = ideas.filter(i => (i.folder || '') === filterFolder && i.status === 'active');
     const now = Date.now();
     let html = `<div class="section-label">${escHtml(filterFolder || 'Unfiled')}</div>`;
     if (folderIdeas.length === 0) {
@@ -1648,8 +1665,9 @@ function renderFoldersScreen(container, filterFolder, title) {
     return;
   }
 
-  const activeCount = ideas.filter(i => i.status !== 'completed').length;
+  const activeCount = ideas.filter(i => i.status === 'active').length;
   const completedCount = ideas.filter(i => i.status === 'completed').length;
+  const deletedCount = ideas.filter(i => i.status === 'deleted').length;
 
   let html = '<div class="section-label">All ideas</div>';
   // "All" row
@@ -1668,11 +1686,16 @@ function renderFoldersScreen(container, filterFolder, title) {
     <div class="folder-info"><div class="folder-name">Achievements</div><div class="folder-count">${completedCount} idea${completedCount !== 1 ? 's' : ''}</div></div>
     <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
   </div>`;
+  html += `<div class="folder-row" onclick="openFolderDetail('__trash__', 'Recently Deleted')">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
+    <div class="folder-info"><div class="folder-name">Recently Deleted</div><div class="folder-count">${deletedCount} idea${deletedCount !== 1 ? 's' : ''}</div></div>
+    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+  </div>`;
 
   if (folders.length > 0) {
     html += '<div class="section-label" style="padding-top:16px;">Folders</div>';
     folders.forEach(f => {
-      const count = ideas.filter(i => (i.folder || '') === f && i.status !== 'completed').length;
+      const count = ideas.filter(i => (i.folder || '') === f && i.status === 'active').length;
       html += `<div class="folder-row" onclick="openFolderDetail('${escHtml(f)}', '${escHtml(f)}')">
         <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
         <div class="folder-info"><div class="folder-name">${escHtml(f)}</div><div class="folder-count">${count} idea${count !== 1 ? 's' : ''}</div></div>
@@ -1702,8 +1725,27 @@ function completedRowHTML(idea, now) {
   </div>`;
 }
 
+function deletedRowHTML(idea, now) {
+  const tags = (idea.tags || []).slice(0, 2);
+  return `<div class="idea-row-wrap" data-id="${idea.id}">
+    <div class="idea-row" onclick="event.stopPropagation();" style="cursor:default;">
+      <div class="idea-body">
+        <div class="idea-title">${escHtml(idea.title)}</div>
+        <div class="idea-desc">${escHtml(idea.description)}</div>
+        <div class="idea-meta">
+          ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="idea-time">Deleted ${timeAgo(idea.deletedAt)}</span>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="event.stopPropagation(); restoreIdea('${idea.id}')" title="Restore">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5a9 9 0 1 1-1.2 5"/><polyline points="3 4 3 9.5 8.5 9.5"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
 
-// Folder names starting with "__" are reserved for smart folders (All ideas, Achievements)
+
+// Folder names starting with "__" are reserved for smart folders (All ideas, Achievements, Recently Deleted)
 function sanitizeFolderName(name) {
   return name.replace(/^_+/, '');
 }
@@ -1903,9 +1945,19 @@ function restoreIdea(id) {
   if (!idea) return;
   idea.status = 'active';
   idea.completedAt = null;
+  idea.deletedAt = null;
   saveIdeas();
   refreshVisibleList();
   showToast('Restored');
+}
+function permanentlyDeleteAll() {
+  const count = ideas.filter(i => i.status === 'deleted').length;
+  if (count === 0) return;
+  if (!confirm(`Permanently delete all ${count} idea${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+  ideas = ideas.filter(i => i.status !== 'deleted');
+  saveIdeas();
+  refreshVisibleList();
+  showToast('Permanently deleted');
 }
 function markCompleteCurrentIdea() {
   haptic(12);
@@ -1921,7 +1973,10 @@ function restoreCurrentIdea() {
 // ─── Weekly Review ────────────────────────────────────────────────────────────
 let reviewQueue = [], reviewIndex = 0, reviewExpanded = false;
 function getReviewQueue() {
-  return ideas.filter(i => i.status === 'active').sort((a, b) => a.createdAt - b.createdAt);
+  const cooldown = 7 * 86400000;
+  return ideas
+    .filter(i => i.status === 'active' && (!i.lastReviewedAt || (Date.now() - i.lastReviewedAt) >= cooldown))
+    .sort((a, b) => a.createdAt - b.createdAt);
 }
 function startReview() {
   reviewQueue = getReviewQueue();
@@ -1957,23 +2012,24 @@ function renderReviewCard() {
       <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
       <button class="btn btn-primary" style="flex:1;" onclick="reviewKeep()">Keep</button>
     </div>
-    <button class="btn" id="review-complete-btn" style="width:100%; background:var(--bg-2); color:var(--text-2); display:flex; align-items:center; justify-content:center; gap:6px;" onclick="reviewCompleteTap()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;"><path d="M20 6L9 17l-5-5"/></svg>
-      Mark complete
-    </button>`;
+    <div style="display:flex; justify-content:center;">
+      <button id="review-complete-btn" style="border:none; background:none; color:var(--text-2); font-size:11.5px; font-weight:500; display:flex; align-items:center; gap:4px; padding:2px 0;" onclick="reviewCompleteTap()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:12px;height:12px;"><path d="M20 6L9 17l-5-5"/></svg>
+        Mark complete
+      </button>
+    </div>`;
 }
 function renderReviewCardContent() {
   const container = document.getElementById('review-content');
   const idea = reviewQueue[reviewIndex];
   if (!idea) return;
   const tags = (idea.tags || []).slice(0, 3);
-  container.style.justifyContent = reviewExpanded ? 'flex-start' : 'center';
-  container.style.overflowY = reviewExpanded ? 'auto' : 'hidden';
-  const expandedHtml = reviewExpanded ? reviewExpandedDetailHtml(idea) : '';
+  container.style.justifyContent = 'center';
+  container.style.overflowY = 'hidden';
   container.innerHTML = `
-    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; ${reviewExpanded ? 'margin:0 4px 16px;' : 'margin:0 4px 28px;'} touch-action:pan-y;">
-      <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:${reviewExpanded ? 0 : 0.3};"><path d="M15 18l-6-6 6-6"/></svg>
-      <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:${reviewExpanded ? 0 : 0.3};"><path d="M9 18l6-6-6-6"/></svg>
+    <div class="review-card" id="review-card" style="position:relative; border:1px solid var(--border-light); border-radius:14px; padding:18px 14px 24px; margin:0 4px 28px; touch-action:pan-y;">
+      <svg id="review-chevron-left" viewBox="0 0 24 24" fill="none" stroke="#eb5757" stroke-width="2" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3; transition:opacity 0.25s ease;"><path d="M15 18l-6-6 6-6"/></svg>
+      <svg id="review-chevron-right" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:18px; height:18px; opacity:0.3; transition:opacity 0.25s ease;"><path d="M9 18l6-6-6-6"/></svg>
       <div id="review-card-body" style="position:relative;">
         <div class="detail-title" id="review-card-title" style="margin:10px 0 6px;">${escHtml(idea.title)}</div>
         <div class="detail-desc" id="review-card-desc">${escHtml(idea.description)}</div>
@@ -1981,7 +2037,7 @@ function renderReviewCardContent() {
           ${tags.map(t => `<span class="tag review-tag">${escHtml(t)}</span>`).join('')}
           <span class="idea-time">${timeAgo(idea.createdAt)}</span>
         </div>
-        ${expandedHtml}
+        <div id="review-expanded-detail" style="max-height:0; overflow:hidden; opacity:0; transition:max-height 0.35s ease, opacity 0.3s ease;"></div>
       </div>
     </div>`;
 }
@@ -2013,7 +2069,34 @@ function reviewExpandedDetailHtml(idea) {
 function toggleReviewCardExpand() {
   reviewExpanded = !reviewExpanded;
   haptic(8);
-  renderReviewCardContent();
+  const idea = reviewQueue[reviewIndex];
+  const container = document.getElementById('review-content');
+  const card = document.getElementById('review-card');
+  const detail = document.getElementById('review-expanded-detail');
+  const leftChev = document.getElementById('review-chevron-left');
+  const rightChev = document.getElementById('review-chevron-right');
+  if (!idea || !container || !card || !detail) return;
+  if (reviewExpanded) {
+    container.style.justifyContent = 'flex-start';
+    container.style.overflowY = 'auto';
+    card.style.margin = '0 4px 16px';
+    if (leftChev) leftChev.style.opacity = '0';
+    if (rightChev) rightChev.style.opacity = '0';
+    detail.innerHTML = reviewExpandedDetailHtml(idea);
+    requestAnimationFrame(() => {
+      detail.style.maxHeight = detail.scrollHeight + 'px';
+      detail.style.opacity = '1';
+    });
+  } else {
+    container.style.justifyContent = 'center';
+    container.style.overflowY = 'hidden';
+    card.style.margin = '0 4px 28px';
+    if (leftChev) leftChev.style.opacity = '0.3';
+    if (rightChev) rightChev.style.opacity = '0.3';
+    detail.style.maxHeight = '0px';
+    detail.style.opacity = '0';
+    setTimeout(() => { if (!reviewExpanded) detail.innerHTML = ''; }, 350);
+  }
 }
 function reviewCompleteTap() {
   const btn = document.getElementById('review-complete-btn');
@@ -2033,6 +2116,8 @@ function reviewCompleteTap() {
 }
 function reviewKeep() {
   haptic(10);
+  const idea = reviewQueue[reviewIndex];
+  if (idea) { idea.lastReviewedAt = Date.now(); saveIdeas(); }
   reviewIndex++;
   renderReviewCard();
 }
@@ -2115,8 +2200,9 @@ function setupReviewSwipe() {
     s.dy = e.clientY - s.startY;
     if (reviewExpanded) return;
     const horizontal = Math.abs(s.dx) > Math.abs(s.dy);
-    const tx = horizontal ? s.dx : s.dx * 0.2;
-    const ty = horizontal ? s.dy * 0.2 : s.dy;
+    const WIGGLE_MAX = 7; // px of off-axis give, regardless of how far the finger strays
+    const tx = horizontal ? s.dx : Math.max(-WIGGLE_MAX, Math.min(WIGGLE_MAX, s.dx * 0.2));
+    const ty = horizontal ? Math.max(-WIGGLE_MAX, Math.min(WIGGLE_MAX, s.dy * 0.2)) : s.dy;
     s.card.style.transform = `translate(${tx}px, ${ty}px) rotate(${horizontal ? s.dx / 24 : 0}deg)`;
 
     const isDeleting = horizontal && s.dx < 0;
@@ -2486,14 +2572,8 @@ function deleteCurrentIdea() {
   closeMoreMenu();
   if (!currentIdeaId) return;
   if (!confirm('Delete this idea?')) return;
-  haptic(18);
-  ideas = ideas.filter(i => i.id !== currentIdeaId);
-  saveIdeas();
-  renderInbox();
-  renderFolders();
-  updateSettingsCount();
+  deleteIdeaById(currentIdeaId);
   showNavScreen('screen-inbox');
-  showToast('Idea deleted');
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
@@ -2532,7 +2612,7 @@ function handleSearch() {
 
 function runSearch(q) {
   const lower = q.toLowerCase();
-  const scored = ideas.filter(i => i.status !== 'completed').map(idea => {
+  const scored = ideas.filter(i => i.status === 'active').map(idea => {
     let score = 0;
     const fields = [
       idea.title, idea.description,
@@ -3016,6 +3096,8 @@ function setSaveMode(mode) {
 }
 
 // ─── Processing (Gemini AI) ───────────────────────────────────────────────────
+// One quote per possible day-of-month (31), so showLoadingQuote() can pick
+// deterministically via Date.getDate() instead of randomly — see below.
 const QUOTES = [
   { t: 'The best way to have a good idea is to have a lot of ideas.', a: 'Linus Pauling' },
   { t: 'Imagination is more important than knowledge.', a: 'Albert Einstein' },
@@ -3026,10 +3108,32 @@ const QUOTES = [
   { t: 'Every child is an artist. The problem is staying one as we grow up.', a: 'Pablo Picasso' },
   { t: 'I have not failed. I’ve just found 10,000 ways that won’t work.', a: 'Thomas Edison' },
   { t: 'The chief enemy of creativity is good sense.', a: 'Pablo Picasso' },
+  { t: 'Creativity is intelligence having fun.', a: 'Albert Einstein' },
+  { t: 'You can’t use up creativity. The more you use, the more you have.', a: 'Maya Angelou' },
+  { t: 'An idea that is not dangerous is unworthy of being called an idea at all.', a: 'Oscar Wilde' },
+  { t: 'The only way to discover the limits of the possible is to go beyond them into the impossible.', a: 'Arthur C. Clarke' },
+  { t: 'If you want something new, you have to stop doing something old.', a: 'Peter Drucker' },
+  { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
+  { t: 'There is no innovation and creativity without failure. Period.', a: 'Brené Brown' },
+  { t: 'Logic will get you from A to B. Imagination will take you everywhere.', a: 'Albert Einstein' },
+  { t: 'To raise new questions, new possibilities, requires creative imagination.', a: 'Albert Einstein' },
+  { t: 'Design is thinking made visual.', a: 'Saul Bass' },
+  { t: 'Good design is obvious. Great design is transparent.', a: 'Joe Sparano' },
+  { t: 'Everything you can imagine is real.', a: 'Pablo Picasso' },
+  { t: 'A person who never made a mistake never tried anything new.', a: 'Albert Einstein' },
+  { t: 'The desire to create is one of the deepest urges of the human soul.', a: 'Dee Hock' },
+  { t: 'Originality is nothing but judicious imitation.', a: 'Voltaire' },
+  { t: 'Without craftsmanship, inspiration is a mere reed shaken in the wind.', a: 'Johannes Brahms' },
+  { t: 'Art is the elimination of the unnecessary.', a: 'Pablo Picasso' },
+  { t: 'The world always seems brighter when you’ve just made something that wasn’t there before.', a: 'Neil Gaiman' },
+  { t: 'The best way to predict the future is to invent it.', a: 'Alan Kay' },
+  { t: 'Nothing is a waste of time if you use the experience wisely.', a: 'Auguste Rodin' },
+  { t: 'Innovation distinguishes between a leader and a follower.', a: 'Steve Jobs' },
+  { t: 'The way to get started is to quit talking and begin doing.', a: 'Walt Disney' },
 ];
 
 function showLoadingQuote() {
-  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  const q = QUOTES[new Date().getDate() - 1];
   document.getElementById('proc-quote').textContent = '“' + q.t + '”';
   document.getElementById('proc-quote-author').textContent = '— ' + q.a;
   document.getElementById('proc-loading').classList.add('show');
