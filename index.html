@@ -1741,13 +1741,6 @@ function renderFoldersScreen(container, filterFolder, title) {
   const completedCount = ideas.filter(i => i.status === 'completed').length;
   const deletedCount = ideas.filter(i => i.status === 'deleted').length;
 
-  let html = '<div class="section-label">All ideas</div>';
-  // "All" row
-  html += `<div class="folder-row" onclick="openFolderDetail('__all__', 'All ideas')">
-    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
-    <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${activeCount} idea${activeCount !== 1 ? 's' : ''}</div></div>
-    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
-  </div>`;
   const reviewDueCount = getReviewQueue().length;
   let reviewSubLabel = 'All caught up';
   if (reviewDueCount === 0) {
@@ -1758,7 +1751,7 @@ function renderFoldersScreen(container, filterFolder, title) {
       if (days) reviewSubLabel = `Next in ${days}d`;
     }
   }
-  html += reviewDueCount > 0
+  let html = reviewDueCount > 0
     ? `<button onclick="startReview()" style="width:100%; border:none; background:var(--orange); color:#fff; border-radius:18px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; cursor:pointer; animation: reviewBtnFadeIn 0.35s ease;">
         <span style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:16px;height:16px;"><path d="M9 18l6-6-6-6"/></svg>
@@ -1773,6 +1766,14 @@ function renderFoldersScreen(container, filterFolder, title) {
         </span>
         <span style="font-size:13px;">${reviewSubLabel}</span>
       </button>`;
+
+  html += '<div class="section-label">All ideas</div>';
+  // "All" row
+  html += `<div class="folder-row" onclick="openFolderDetail('__all__', 'All ideas')">
+    <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+    <div class="folder-info"><div class="folder-name">All ideas</div><div class="folder-count">${activeCount} idea${activeCount !== 1 ? 's' : ''}</div></div>
+    <div class="folder-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18l6-6-6-6"/></svg></div>
+  </div>`;
   html += `<div class="folder-row" onclick="openFolderDetail('__completed__', 'Achievements')">
     <div class="folder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 6L9 17l-5-5"/></svg></div>
     <div class="folder-info"><div class="folder-name">Achievements</div><div class="folder-count">${completedCount} idea${completedCount !== 1 ? 's' : ''}</div></div>
