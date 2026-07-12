@@ -813,6 +813,28 @@
         </div>
       </div>
       <div class="settings-section">
+        <div class="settings-label">Backup</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Download backup</div>
+            <div class="settings-row-sub">Save all your ideas as a file you keep, separate from this browser.</div>
+          </div>
+          <button class="icon-btn" onclick="backupIdeas()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/><path d="M7 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+          </button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-title">Restore from backup</div>
+            <div class="settings-row-sub">Add ideas back in from a backup file. Never overwrites what's already here.</div>
+          </div>
+          <button class="icon-btn" onclick="triggerRestoreFile()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M8.5 10.5L12 14l3.5-3.5"/><path d="M7 21H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h2"/><path d="M17 21h2a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+          </button>
+          <input type="file" id="restore-file-input" accept="application/json,.json" style="display:none;" onchange="restoreFromBackup(this)">
+        </div>
+      </div>
+      <div class="settings-section">
         <div class="settings-label">Data</div>
         <div class="settings-row">
           <div class="settings-row-info">
@@ -1214,6 +1236,64 @@ async function exportIdeas(days) {
       showToast('Copied to clipboard');
     }
   }
+}
+
+// ─── Backup / restore (full-fidelity JSON, independent of this browser's storage) ──
+function backupIdeas() {
+  const data = {
+    version: SCHEMA_VERSION,
+    exportedAt: Date.now(),
+    ideas: ideas.filter(i => !isDemoIdea(i))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `spark-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+}
+function triggerRestoreFile() {
+  document.getElementById('restore-file-input').click();
+}
+function restoreFromBackup(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try {
+      data = JSON.parse(reader.result);
+    } catch (e) {
+      showToast('That file isn\'t a valid backup');
+      input.value = '';
+      return;
+    }
+    const incoming = Array.isArray(data) ? data : Array.isArray(data.ideas) ? data.ideas : null;
+    if (!incoming) {
+      showToast('That file isn\'t a valid backup');
+      input.value = '';
+      return;
+    }
+    const existingIds = new Set(ideas.map(i => i.id));
+    let added = 0;
+    incoming.forEach(idea => {
+      if (idea && idea.id && !existingIds.has(idea.id)) {
+        ideas.push(idea);
+        existingIds.add(idea.id);
+        added++;
+      }
+    });
+    saveIdeas();
+    refreshVisibleList();
+    updateSettingsCount();
+    showToast(added > 0 ? `Restored ${added} idea${added !== 1 ? 's' : ''}` : 'Nothing new to restore');
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
