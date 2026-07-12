@@ -2236,18 +2236,25 @@ function reviewDelete() {
 function reviewMarkComplete() {
   const idea = reviewQueue[reviewIndex];
   if (!idea) return;
-  showReviewSwipeLabel('complete');
+  const card = document.getElementById('review-card');
+  if (card) {
+    card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    card.style.transform = 'scale(0.94)';
+    card.style.opacity = '0';
+  }
+  setTimeout(() => showReviewSwipeLabel('complete'), CARD_DISMISS_MS);
   setTimeout(() => {
     markIdeaComplete(idea.id);
     const pos = reviewQueue.indexOf(idea);
     if (pos !== -1) reviewQueue.splice(pos, 1);
     renderReviewCard();
-  }, REVIEW_LABEL_TOTAL_MS);
+  }, CARD_DISMISS_MS + REVIEW_LABEL_TOTAL_MS);
 }
 
-// ─── Review swipe label: brief "Delete"/"Keep" confirmation after a committed swipe ──
-// The next card is held back (see release()'s commit timeouts) until this label has
-// fully faded out, so the two never overlap on screen.
+// ─── Review swipe label: brief "Delete"/"Keep"/"Complete" confirmation ─────────
+// Sequenced so the three phases never overlap: the card fully disappears first,
+// then the label fades in, then the label fades out, then the next card appears.
+const CARD_DISMISS_MS = 220;
 const REVIEW_LABEL_VISIBLE_MS = 700;
 const REVIEW_LABEL_FADE_MS = 250;
 const REVIEW_LABEL_TOTAL_MS = REVIEW_LABEL_VISIBLE_MS + REVIEW_LABEL_FADE_MS;
@@ -2363,13 +2370,13 @@ function setupReviewSwipe() {
     if (horizontal && s.dx <= -THRESH) {
       s.card.style.transform = `translate(-420px, ${s.dy * 0.2}px) rotate(-14deg)`;
       if (body) body.style.opacity = '0';
-      showReviewSwipeLabel('delete');
-      setTimeout(reviewDelete, REVIEW_LABEL_TOTAL_MS);
+      setTimeout(() => showReviewSwipeLabel('delete'), CARD_DISMISS_MS);
+      setTimeout(reviewDelete, CARD_DISMISS_MS + REVIEW_LABEL_TOTAL_MS);
     } else if (horizontal && s.dx >= THRESH) {
       s.card.style.transform = `translate(420px, ${s.dy * 0.2}px) rotate(14deg)`;
       s.card.style.opacity = '0';
-      showReviewSwipeLabel('keep');
-      setTimeout(reviewKeep, REVIEW_LABEL_TOTAL_MS);
+      setTimeout(() => showReviewSwipeLabel('keep'), CARD_DISMISS_MS);
+      setTimeout(reviewKeep, CARD_DISMISS_MS + REVIEW_LABEL_TOTAL_MS);
     } else {
       s.card.style.transform = '';
       resetCardFx(s.card);
