@@ -317,12 +317,21 @@
   .transcript-toggle svg { width: 14px; height: 14px; }
   .chevron { margin-left: auto; width: 14px !important; height: 14px !important; transition: transform 0.2s; }
   .transcript-box {
+    position: relative;
     max-height: 0; overflow: hidden; overflow-wrap: break-word;
     transition: max-height 0.3s ease;
     padding: 0 24px; font-size: 15px; color: var(--text-2);
     line-height: 1.7; font-family: var(--font); font-style: italic;
   }
-  .transcript-box.open { max-height: none; padding: 14px 24px; background: var(--bg-2); border-radius: 14px; }
+  .transcript-box.open { max-height: none; padding: 14px 40px 14px 24px; background: var(--bg-2); border-radius: 14px; }
+  .transcript-copy-btn {
+    position: absolute; top: 10px; right: 10px; width: 26px; height: 26px;
+    border: none; border-radius: 8px; background: rgba(0,0,0,0.06); color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    font-style: normal; transition: background 0.15s;
+  }
+  .transcript-copy-btn:hover { background: rgba(0,0,0,0.12); }
+  .transcript-copy-btn svg { width: 14px; height: 14px; }
 
   .related-list { padding: 0 24px 12px; display: flex; flex-direction: column; gap: 2px; }
   .related-row {
@@ -1935,7 +1944,12 @@ function openIdea(id, fromScreen) {
       Original transcript
       <svg class="chevron" id="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"/></svg>
     </button>
-    <div class="transcript-box" id="transcript-box" data-dtap="1" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${transcriptContent}</div>
+    <div class="transcript-box" id="transcript-box">
+      <button class="transcript-copy-btn" onclick="event.stopPropagation(); copyTranscriptText();" title="Copy transcript" aria-label="Copy transcript">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+      <span id="transcript-text" data-dtap="1" ondblclick="startEdit(this,'transcript')" title="Double-tap to edit">${transcriptContent}</span>
+    </div>
     <div style="height: 40px;"></div>
     </div>
   `;
@@ -2610,7 +2624,46 @@ function startEditBullet(el) {
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
+  el.addEventListener('input', () => handleBulletAutoSplit(el));
   el.addEventListener('blur', () => endEditBullet(el), { once: true });
+}
+
+// While editing a bullet, typing "- " on a new line splits off a new bullet point
+// (matching the same dot colour) instead of leaving "- " as literal text.
+function handleBulletAutoSplit(el) {
+  // Contenteditable represents a line break as either a literal "\n" text node or a
+  // <br> element depending on the browser — normalize both to "\n" before matching,
+  // and normalize the space some browsers insert as "&nbsp;" back to a plain space.
+  const normalized = el.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ');
+  const match = normalized.match(/\n-\s(.*)$/s);
+  if (!match) return;
+  const before = normalized.slice(0, match.index).replace(/\n+$/, '');
+  const after = match[1];
+  el.textContent = before;
+
+  const li = el.closest('li');
+  const dotClass = li.firstElementChild ? li.firstElementChild.className : 'bullet';
+  const field = el.dataset.field || 'bullets';
+  const newLi = document.createElement('li');
+  newLi.innerHTML = `<div class="${dotClass}"></div><span class="bullet-text" data-field="${field}" data-i="-1" data-dtap="1" ondblclick="startEditBullet(this)"></span>`;
+  li.after(newLi);
+
+  const newSpan = newLi.querySelector('.bullet-text');
+  newSpan.textContent = after;
+  newSpan.contentEditable = 'true';
+  newSpan.classList.add('editing');
+  newSpan.addEventListener('input', () => handleBulletAutoSplit(newSpan));
+  newSpan.addEventListener('blur', () => endEditBullet(newSpan), { once: true });
+  newSpan.focus();
+  const r = document.createRange();
+  r.selectNodeContents(newSpan);
+  r.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
 }
 
 function endEditBullet(el) {
@@ -2618,12 +2671,11 @@ function endEditBullet(el) {
   el.classList.remove('editing');
   const idea = ideas.find(i => i.id === currentIdeaId);
   if (!idea) return;
-  const i = parseInt(el.dataset.i, 10);
   const field = el.dataset.field || 'bullets';
-  if (!Array.isArray(idea[field])) idea[field] = [];
-  const text = el.textContent.trim();
-  if (text) idea[field][i] = text;
-  else idea[field].splice(i, 1);
+  const list = el.closest('.summary-list');
+  idea[field] = list
+    ? [...list.querySelectorAll('.bullet-text')].map(s => s.textContent.trim()).filter(Boolean)
+    : (idea[field] || []);
   saveIdeas();
   openIdea(currentIdeaId, detailFromScreen);
 }
@@ -2636,6 +2688,17 @@ function copyCurrentIdea() {
   const text = [idea.title, idea.description, bullets].filter(Boolean).join('\n\n');
   try {
     navigator.clipboard.writeText(text).then(() => showToast('Copied'), () => showToast('Copy failed'));
+  } catch (e) {
+    showToast('Copy failed');
+  }
+}
+
+function copyTranscriptText() {
+  const el = document.getElementById('transcript-text');
+  const text = el ? el.textContent.trim() : '';
+  if (!text) { showToast('Nothing to copy'); return; }
+  try {
+    navigator.clipboard.writeText(text).then(() => showToast('Transcript copied'), () => showToast('Copy failed'));
   } catch (e) {
     showToast('Copy failed');
   }
@@ -2844,6 +2907,40 @@ function saveTextIdea() {
 
 // ─── Recording (MediaRecorder + Gemini audio) ────────────────────────────────
 let isRecording = false;
+// Local, on-device speech recognition running alongside the recording — a safety
+// net so the idea's words are never lost if the Gemini transcription call fails,
+// is disabled, or has no API key. Not as accurate as Gemini, but always available
+// (where the browser supports it) and needs no network round trip.
+let liveTranscript = '';
+let liveRecognition = null;
+function startLiveTranscription() {
+  liveTranscript = '';
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognitionAPI) return; // browser has no local fallback available
+  try {
+    liveRecognition = new SpeechRecognitionAPI();
+    liveRecognition.continuous = true;
+    liveRecognition.interimResults = true;
+    liveRecognition.lang = 'en-US';
+    liveRecognition.onresult = (e) => {
+      let finalText = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+      }
+      if (finalText) liveTranscript = finalText.trim();
+    };
+    liveRecognition.onerror = () => {};
+    liveRecognition.start();
+  } catch (e) {
+    liveRecognition = null;
+  }
+}
+function stopLiveTranscription() {
+  if (liveRecognition) {
+    try { liveRecognition.stop(); } catch (e) {}
+    liveRecognition = null;
+  }
+}
 
 async function startRecording() {
   haptic(12);
@@ -2878,6 +2975,7 @@ async function startRecording() {
   mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
   mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
   mediaRecorder.start(250);
+  startLiveTranscription();
 }
 
 async function stopRecording() {
@@ -2886,6 +2984,7 @@ async function stopRecording() {
   isRecording = false;
   clearInterval(recTimerInterval); recTimerInterval = null;
   stopWaveform();
+  stopLiveTranscription();
 
   if (!mediaRecorder || audioChunks.length === 0) {
     hideOverlays();
@@ -2925,9 +3024,13 @@ async function stopRecording() {
     return;
   }
 
+  // Pre-fill with the local speech-recognition fallback so the idea's words are
+  // never lost — a successful Gemini call below will overwrite this with its own
+  // (usually more accurate) transcript.
+  currentTranscript = liveTranscript;
+
   if (!isAIEnabled()) {
     hideLoadingQuote();
-    currentTranscript = '';
     saveWithoutAI();
     return;
   }
@@ -2942,6 +3045,7 @@ function cancelRecording() {
   isRecording = false;
   clearInterval(recTimerInterval); recTimerInterval = null;
   stopWaveform();
+  stopLiveTranscription();
   if (mediaRecorder && mediaRecorder.state !== 'inactive') { try { mediaRecorder.stop(); } catch(e) {} }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   audioChunks = [];
@@ -2973,7 +3077,6 @@ function showManualFallback(audioBlob) {
   document.getElementById('save-idea-btn').textContent = 'Save as note';
   document.getElementById('save-idea-btn').disabled = false;
   document.getElementById('save-idea-btn').onclick = () => {
-    currentTranscript = '';
     document.getElementById('save-idea-btn').onclick = null;
     document.getElementById('save-idea-btn').textContent = 'Save';
     saveWithoutAI();
@@ -3077,7 +3180,7 @@ ${currentSaveMode === 'problems' ? '- problems: 2-3 key problems or pain points 
     const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
     if (!parsed.title) throw new Error('Invalid response format');
-    currentTranscript = parsed.transcript || '';
+    currentTranscript = parsed.transcript || currentTranscript;
     document.getElementById('processing-transcript').textContent = currentTranscript;
     showResult(parsed);
   } catch(e) {
