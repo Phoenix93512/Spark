@@ -1742,13 +1742,12 @@ function renderFoldersScreen(container, filterFolder, title) {
   const deletedCount = ideas.filter(i => i.status === 'deleted').length;
 
   const reviewDueCount = getReviewQueue().length;
-  let reviewSubLabel = 'All caught up';
+  let reviewSubLabel = 'Nothing to review';
   if (reviewDueCount === 0) {
     if (activeCount === 0) {
       reviewSubLabel = 'No ideas';
     } else {
-      const days = nextReviewInDays();
-      if (days) reviewSubLabel = `Next in ${days}d`;
+      reviewSubLabel = 'Nothing to review';
     }
   }
   let html = '<div class="section-label">All ideas</div>';
@@ -2075,14 +2074,6 @@ function getReviewQueue() {
     .filter(i => i.status === 'active' && (!i.lastReviewedAt || (Date.now() - i.lastReviewedAt) >= cooldown))
     .sort((a, b) => a.createdAt - b.createdAt);
 }
-// Days until the soonest in-cooldown idea becomes reviewable again, or null if none are cooling down.
-function nextReviewInDays() {
-  const cooldown = 7 * 86400000;
-  const cooling = ideas.filter(i => i.status === 'active' && i.lastReviewedAt);
-  if (!cooling.length) return null;
-  const soonest = Math.min(...cooling.map(i => i.lastReviewedAt + cooldown));
-  return Math.max(1, Math.ceil((soonest - Date.now()) / 86400000));
-}
 function startReview() {
   reviewQueue = getReviewQueue();
   reviewIndex = 0;
@@ -2114,8 +2105,8 @@ function renderReviewCard() {
   renderReviewCardContent();
   actions.innerHTML = `
     <div style="display:flex; gap:8px; margin-bottom:8px;">
-      <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDelete()">Delete</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="reviewKeep()">Keep</button>
+      <button class="btn" style="flex:1; border:1px solid #eb5757; color:#eb5757; background:transparent;" onclick="reviewDeleteAction()">Delete</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="reviewKeepAction()">Keep</button>
     </div>
     <div style="display:flex; justify-content:center;">
       <button id="review-complete-btn" style="border:none; background:none; color:var(--text-2); font-size:11.5px; font-weight:500; display:flex; align-items:center; gap:4px; padding:2px 0;" onclick="reviewCompleteTap()">
@@ -2232,6 +2223,29 @@ function reviewDelete() {
   deleteIdeaById(idea.id);
   reviewQueue.splice(reviewIndex, 1);
   renderReviewCard();
+}
+// Button-triggered Delete/Keep — same dismiss animation + icon/text confirmation
+// as the swipe gesture, so both input methods feel consistent.
+function reviewDeleteAction() {
+  const card = document.getElementById('review-card');
+  if (card) {
+    card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    card.style.transform = 'translateX(-420px) rotate(-14deg)';
+    const body = document.getElementById('review-card-body');
+    if (body) body.style.opacity = '0';
+  }
+  setTimeout(() => showReviewSwipeLabel('delete'), CARD_DISMISS_MS);
+  setTimeout(reviewDelete, CARD_DISMISS_MS + REVIEW_LABEL_TOTAL_MS);
+}
+function reviewKeepAction() {
+  const card = document.getElementById('review-card');
+  if (card) {
+    card.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    card.style.transform = 'translateX(420px) rotate(14deg)';
+    card.style.opacity = '0';
+  }
+  setTimeout(() => showReviewSwipeLabel('keep'), CARD_DISMISS_MS);
+  setTimeout(reviewKeep, CARD_DISMISS_MS + REVIEW_LABEL_TOTAL_MS);
 }
 function reviewMarkComplete() {
   const idea = reviewQueue[reviewIndex];
